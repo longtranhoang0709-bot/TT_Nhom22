@@ -1,39 +1,31 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const bodyParser = require("body-parser");
+require("dotenv").config();
 
-const usersRouter = require('./routes/users');
+const authRoutes = require("./routes/auth");
+const db = require("./db");
 
 const app = express();
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// CORS
-app.use(cors({
-  origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
-  credentials: true
-}));
+app.use("/api/auth", authRoutes);
 
-// Test
-app.get('/', (req, res) => res.send('Express + MySQL backend OK '));
+app.get("/", (req, res) => {
+  res.send("Backend BrewHaven đang chạy...");
+});
 
-// === IMPORT ROUTES ===
-const authRouter = require('./routes/auth');
-const usersRouter = require('./routes/users');
-const productsRouter = require('./routes/products');
-const cartRouter = require('./routes/cart');
-const ordersRouter = require('./routes/orders');
-const promotionsRouter = require('./routes/promotions');
-const contentRouter = require('./routes/content');
-
-// === USE ROUTES ===
-app.use('/api/auth', authRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/products', productsRouter);
-app.use('/api/cart', cartRouter);
-app.use('/api/orders', ordersRouter);
-app.use('/api/promotions', promotionsRouter);
-app.use('/api/content', contentRouter);
-
-// Run server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server đang chạy tại port ${PORT}`);
+});
