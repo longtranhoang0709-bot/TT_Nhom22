@@ -3,100 +3,170 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
 const ACCESS_KEY = "access_secret_key_123";
-const REFRESH_KEY = "refresh_secret_key_789"; 
+const REFRESH_KEY = "refresh_secret_key_789";
 
-// 1. ĐĂNG KÝ 
-router.post('/register', (req, res) => {
-    const { email, password, full_name } = req.body;
+// ==========================
+// 1. REGISTER / ĐĂNG KÝ
+// ==========================
+router.post('/register', async (req, res) => {
+    const { email, password, ho_ten, so_dien_thoai, dia_chi } = req.body;
 
-    // Kiểm tra dữ liệu đầu vào
-    if (!email || !password || !full_name) {
-        return res.status(400).json("Vui lòng điền đầy đủ thông tin!");
+    if (!email || !password || !ho_ten) {
+        return res.status(400).json("Vui lòng nhập đủ email, mật khẩu và họ tên!");
     }
 
-    // Kiểm tra Email tồn tại
-    const checkQuery = "SELECT * FROM users WHERE email = ?";
-    db.query(checkQuery, [email], (err, data) => {
-        if (err) return res.status(500).json({ error: "Lỗi Server", details: err });
-        if (data.length > 0) return res.status(409).json("Email này đã được sử dụng!");
+    try {
+        // Kiểm tra trùng email
+        const [exist] = await db.query(
+            "SELECT * FROM NGUOI_DUNG WHERE email = ?",
+            [email]
+        );
+
+        if (exist.length > 0)
+            return res.status(409).json("Email đã tồn tại!");
 
         // Mã hóa mật khẩu
         const salt = bcrypt.genSaltSync(10);
         const hashedPassword = bcrypt.hashSync(password, salt);
 
-        const insertQuery = "INSERT INTO users (`email`, `password`, `full_name`, `role`) VALUES (?)";
-        const values = [email, hashedPassword, full_name, 'customer'];
+        // Tạo UUID
+        const userId = uuidv4();
 
-        db.query(insertQuery, [values], (err, data) => {
-            if (err) return res.status(500).json({ error: "Lỗi tạo tài khoản", details: err });
-            return res.status(200).json("Đăng ký thành công!");
-        });
-    });
+        // Tạo người dùng
+        await db.query(
+            `INSERT INTO NGUOI_DUNG 
+            (ma_nguoi_dung, ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [userId, ho_ten, email, so_dien_thoai || null, hashedPassword, dia_chi || null]
+        );
+
+        // GÁN VAI TRÒ mặc định: CUSTOMER (giả sử ma_vai_tro = 1)
+        await db.query(
+            "INSERT INTO NGUOI_DUNG_VAI_TRO (ma_nguoi_dung, ma_vai_tro) VALUES (?, ?)",
+            [userId, 1]
+        );
+
+        res.status(201).json("Đăng ký thành công!");
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi server", detail: err });
+    }
 });
 
-// 2. ĐĂNG NHẬP
-router.post('/login', (req, res) => {
+// ==========================
+// 2. LOGIN / ĐĂNG NHẬP
+// ==========================
+router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
-    // Validate input
-    if (!email || !password) return res.status(400).json("Chưa nhập email hoặc mật khẩu!");
+    if (!email || !password)
+        return res.status(400).json("Vui lòng nhập email và mật khẩu!");
 
-    const q = "SELECT * FROM users WHERE email = ?";
-    db.query(q, [email], (err, data) => {
-        if (err) return res.status(500).json(err);
-        if (data.length === 0) return res.status(404).json("Tài khoản không tồn tại!");
+    try {
+        // Lấy thông tin user
+        const [rows] = await db.query(
+            "SELECT * FROM NGUOI_DUNG WHERE email = ?",
+            [email]
+        );
 
-        // Check pass
-        const isPasswordCorrect = bcrypt.compareSync(password, data[0].password);
-        if (!isPasswordCorrect) return res.status(400).json("Sai mật khẩu!");
+        if (rows.length === 0)
+            return res.status(404).json("Tài khoản không tồn tại!");
 
-        // --- TẠO TOKEN ---
-        // Access Token: Sống ngắn (15 phút)
-        const accessToken = jwt.sign({ id: data[0].id, role: data[0].role }, ACCESS_KEY, { expiresIn: '15m' });
-        
-        // Refresh Token: Sống dài (7 ngày)
-        const refreshToken = jwt.sign({ id: data[0].id, role: data[0].role }, REFRESH_KEY, { expiresIn: '7d' });
+        const user = rows[0];
 
-        const { password: userPass, ...otherInfo } = data[0];
+        // Kiểm tra mật khẩu
+        const match = bcrypt.compareSync(password, user.mat_khau_ma_hoa);
+        if (!match)
+            return res.status(400).json("Sai mật khẩu!");
 
-        // Gửi Refresh Token vào Cookie (An toàn hơn gửi JSON)
+        // Lấy vai trò (user có thể nhiều role)
+        const [roles] = await db.query(
+            `SELECT V.ten_vai_tro 
+             FROM NGUOI_DUNG_VAI_TRO NVT
+             JOIN VAI_TRO V ON NVT.ma_vai_tro = V.ma_vai_tro
+             WHERE NVT.ma_nguoi_dung = ?`,
+            [user.ma_nguoi_dung]
+        );
+
+        const roleNames = roles.map(r => r.ten_vai_tro);
+
+        // Tạo Access Token
+        const accessToken = jwt.sign(
+            {
+                id: user.ma_nguoi_dung,
+                roles: roleNames
+            },
+            ACCESS_KEY,
+            { expiresIn: '15m' }
+        );
+
+        // Tạo Refresh Token
+        const refreshToken = jwt.sign(
+            {
+                id: user.ma_nguoi_dung,
+                roles: roleNames
+            },
+            REFRESH_KEY,
+            { expiresIn: '7d' }
+        );
+
+        // Gửi Refresh Token vào Cookie
         res.cookie("refreshToken", refreshToken, {
-            httpOnly: true, // JS không đọc được (chống XSS)
-            secure: false,  // localhost thì để false, lên https thì để true
-            sameSite: "strict"
-        })
-        .status(200)
-        .json({ ...otherInfo, accessToken }); // Chỉ gửi Access Token về JSON
-    });
+            httpOnly: true,
+            secure: false,
+            sameSite: "strict",
+        });
+
+        const { mat_khau_ma_hoa, ...publicData } = user;
+
+        res.status(200).json({
+            ...publicData,
+            roles: roleNames,
+            accessToken
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi server", detail: err });
+    }
 });
 
-// 3. REFRESH TOKEN (Cấp lại Access Token mới)
+// ==========================
+// 3. REFRESH TOKEN
+// ==========================
 router.post('/refresh', (req, res) => {
-    // Lấy Refresh Token từ Cookie
     const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken)
+        return res.status(401).json("Không có refresh token!");
 
-    if (!refreshToken) return res.status(401).json("Bạn chưa đăng nhập! (Không có Refresh Token)");
-
-    // Kiểm tra xem Refresh Token có hợp lệ không
     jwt.verify(refreshToken, REFRESH_KEY, (err, user) => {
-        if (err) return res.status(403).json("Token không hợp lệ hoặc đã hết hạn!");
+        if (err) return res.status(403).json("Refresh Token lỗi hoặc hết hạn!");
 
-        // Nếu đúng, tạo Access Token MỚI
-        const newAccessToken = jwt.sign({ id: user.id, role: user.role }, ACCESS_KEY, { expiresIn: '15m' });
+        const newAccess = jwt.sign(
+            { id: user.id, roles: user.roles },
+            ACCESS_KEY,
+            { expiresIn: '15m' }
+        );
 
-        // Trả Access Token mới về
-        res.status(200).json({ accessToken: newAccessToken });
+        res.status(200).json({ accessToken: newAccess });
     });
 });
 
-// 4. LOGOUT (Xóa Cookie)
+// ==========================
+// 4. LOGOUT
+// ==========================
 router.post('/logout', (req, res) => {
     res.clearCookie("refreshToken", {
-        sameSite: "none",
-        secure: true
-    }).status(200).json("Đăng xuất thành công!");
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict"
+    });
+
+    res.status(200).json("Đăng xuất thành công!");
 });
 
 module.exports = router;
