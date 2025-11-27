@@ -1,112 +1,22 @@
 const express = require('express');
-const db = require('../db');
-const { v4: uuidv4 } = require('uuid');
-
 const router = express.Router();
-
+const userController = require('../controllers/userController'); 
 const verifyToken = require('../middlewares/authMiddleware'); 
 const verifyRole = require('../middlewares/roleMiddleware');
 
+// 1. GET ALL: Chỉ Admin
+router.get('/', verifyToken, verifyRole('Admin'), userController.getAllUsers);
 
-// 1. GET ALL: Chỉ Admin mới được xem danh sách tất cả user
-router.get('/', verifyToken, verifyRole('Admin'), async (req, res) => { 
-  try {
-    const [rows] = await db.query('SELECT * FROM NGUOI_DUNG');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: 'DB error' });
-  }
-});
+// 2. GET BY ID: Đăng nhập là xem được
+router.get('/:id', verifyToken, userController.getUserById);
 
-/**
- * GET: Lấy người dùng theo ID
- */
-router.get('/:id', verifyToken, async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      'SELECT * FROM NGUOI_DUNG WHERE ma_nguoi_dung = ?',
-      [req.params.id]
-    );
+// 3. POST: Admin tạo user
+router.post('/', verifyToken, verifyRole('Admin'), userController.createUser);
 
-    if (!rows.length) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+// 4. PUT: Update thông tin
+router.put('/:id', verifyToken, userController.updateUser);
 
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'DB error' });
-  }
-});
-
-// 3. POST: Admin tạo user thủ công (Khác với khách tự đăng ký bên auth)
-router.post('/', verifyToken, verifyRole('Admin'), async (req, res) => {
-  const { ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi } = req.body;
-
-  if (!ho_ten || !email || !mat_khau_ma_hoa)
-    return res.status(400).json({ error: 'Thiếu trường bắt buộc' });
-
-  try {
-    const userId = uuidv4();
-
-    await db.query(
-      `INSERT INTO NGUOI_DUNG
-      (ma_nguoi_dung, ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi)
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, ho_ten, email, so_dien_thoai || null, mat_khau_ma_hoa, dia_chi || null]
-    );
-
-    const [rows] = await db.query(
-      'SELECT * FROM NGUOI_DUNG WHERE ma_nguoi_dung = ?',
-      [userId]
-    );
-
-    res.status(201).json(rows[0]);
-
-  } catch (err) {
-    console.error(err);
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ error: 'Email đã tồn tại' });
-    }
-    res.status(500).json({ error: 'DB error' });
-  }
-});
-
-/**
- * PUT: Cập nhật người dùng
- */
-router.put('/:id', async (req, res) => {
-  const { ho_ten, email, so_dien_thoai, dia_chi } = req.body;
-
-  try {
-    await db.query(
-      `UPDATE NGUOI_DUNG 
-       SET ho_ten = ?, email = ?, so_dien_thoai = ?, dia_chi = ?
-       WHERE ma_nguoi_dung = ?`,
-      [ho_ten, email, so_dien_thoai, dia_chi, req.params.id]
-    );
-
-    const [rows] = await db.query(
-      'SELECT * FROM NGUOI_DUNG WHERE ma_nguoi_dung = ?',
-      [req.params.id]
-    );
-
-    res.json(rows[0] || {});
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'DB error' });
-  }
-});
-
-// 4. DELETE: Chỉ Admin mới được xóa user
-router.delete('/:id', verifyToken, verifyRole('Admin'), async (req, res) => {
-  try {
-    await db.query(
-      'DELETE FROM NGUOI_DUNG WHERE ma_nguoi_dung = ?',
-      [req.params.id]
-    );
-
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: 'DB error' });
-  }
-});
+// 5. DELETE: Chỉ Admin xóa
+router.delete('/:id', verifyToken, verifyRole('Admin'), userController.deleteUser);
 
 module.exports = router;

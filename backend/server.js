@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
+const productRoutes = require("./routes/products");
 const db = require("./db");
 
 const app = express();
@@ -22,6 +23,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/products", productRoutes);
+
+
+app.use('/uploads', express.static('uploads'));
 
 app.get("/", (req, res) => {
   res.send("Backend BrewHaven đang chạy...");
