@@ -4,15 +4,16 @@ const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 
-/**
- * GET: Lấy danh sách người dùng
- */
-router.get('/', async (req, res) => {
+const verifyToken = require('../middlewares/authMiddleware'); 
+const verifyRole = require('../middlewares/roleMiddleware');
+
+
+// 1. GET ALL: Chỉ Admin mới được xem danh sách tất cả user
+router.get('/', verifyToken, verifyRole('Admin'), async (req, res) => { 
   try {
     const [rows] = await db.query('SELECT * FROM NGUOI_DUNG');
     res.json(rows);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'DB error' });
   }
 });
@@ -20,7 +21,7 @@ router.get('/', async (req, res) => {
 /**
  * GET: Lấy người dùng theo ID
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', verifyToken, async (req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT * FROM NGUOI_DUNG WHERE ma_nguoi_dung = ?',
@@ -35,10 +36,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-/**
- * POST: Tạo người dùng mới
- */
-router.post('/', async (req, res) => {
+// 3. POST: Admin tạo user thủ công (Khác với khách tự đăng ký bên auth)
+router.post('/', verifyToken, verifyRole('Admin'), async (req, res) => {
   const { ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi } = req.body;
 
   if (!ho_ten || !email || !mat_khau_ma_hoa)
@@ -96,10 +95,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-/**
- * DELETE: Xóa người dùng
- */
-router.delete('/:id', async (req, res) => {
+// 4. DELETE: Chỉ Admin mới được xóa user
+router.delete('/:id', verifyToken, verifyRole('Admin'), async (req, res) => {
   try {
     await db.query(
       'DELETE FROM NGUOI_DUNG WHERE ma_nguoi_dung = ?',
