@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const ACCESS_KEY = process.env.ACCESS_KEY || "access_secret_key_123";
 
+// Middleware xác thực token
 module.exports = (req, res, next) => {
     const authHeader = req.headers["authorization"];
 

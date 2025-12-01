@@ -25,6 +25,7 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
+// Tạo middleware upload
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 1024 * 1024 * 5 } // Giới hạn 5MB

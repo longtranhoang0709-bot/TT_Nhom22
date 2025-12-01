@@ -1,3 +1,4 @@
+// Middleware kiểm tra vai trò người dùng
 module.exports = function requiredRole(...allowedRoles) {
     return (req, res, next) => {
         if (!req.user)

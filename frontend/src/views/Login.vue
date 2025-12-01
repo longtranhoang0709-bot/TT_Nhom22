@@ -1,51 +1,66 @@
-<!-- src/views/Login.vue -->
 <template>
-  <div class="container">
-    <h2>Login</h2>
-
-    <form @submit.prevent="submit">
+  <div style="padding: 20px;">
+    <h2>Đăng Nhập</h2>
+    <form @submit.prevent="handleLogin">
       <div>
-        <label>Username:</label>
-        <input v-model="username" type="text" />
+        <label>Email:</label> <br/>
+        <input v-model="email" type="email" required placeholder="Nhập email" />
       </div>
 
-      <div>
-        <label>Password:</label>
-        <input v-model="password" type="password" />
+      <div style="margin-top: 10px;">
+        <label>Mật khẩu:</label> <br/>
+        <input v-model="password" type="password" required placeholder="Nhập mật khẩu" />
       </div>
 
-      <button type="submit">Login</button>
+      <button type="submit" style="margin-top: 20px;">Đăng Nhập</button>
     </form>
+
+    <p v-if="message" style="color: red; margin-top: 10px;">{{ message }}</p>
+
+    <p>Chưa có tài khoản? <router-link to="/register">Đăng ký tại đây</router-link></p>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { login } from "../api/auth";
 
-const username = ref("");
-const password = ref("");
+import { ref } from 'vue';
+import api from '../api/axios';
+import { useRouter } from 'vue-router';
 
-const submit = async () => {
-  const res = await login({
-    username: username.value,
-    password: password.value,
-  });
-  alert(res.data.message);
+// Xử lý đăng nhập
+const router = useRouter();
+const email = ref('');
+const password = ref('');
+const message = ref('');
+
+// Hàm xử lý đăng nhập
+const handleLogin = async () => {
+  try {
+    message.value = '';
+    
+    // Gọi API Login
+    const res = await api.post('/auth/login', {
+      email: email.value,
+      password: password.value
+    });
+
+    // 1. Lưu Access Token vào LocalStorage
+    localStorage.setItem('accessToken', res.data.accessToken);
+
+    // 2. Lưu thông tin user (để hiển thị tên, role...) - tùy chọn
+    // Loại bỏ accessToken thừa ra khỏi object user trước khi lưu cho gọn
+    const { accessToken, ...userInfo } = res.data; 
+    localStorage.setItem('user', JSON.stringify(userInfo));
+
+    alert('Đăng nhập thành công!');
+    router.push('/profile');
+    
+    // 3. Chuyển hướng về trang chủ
+    router.push('/'); 
+
+  } catch (error) {
+    console.error(error);
+    message.value = error.response?.data || "Email hoặc mật khẩu không đúng!";
+  }
 };
 </script>
-
-<style scoped>
-.container {
-  width: 300px;
-  margin: 50px auto;
-}
-input {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 5px;
-}
-button {
-  padding: 6px 15px;
-}
-</style>
