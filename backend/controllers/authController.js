@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const ACCESS_KEY = process.env.ACCESS_KEY || "access_secret_key_123";
 const REFRESH_KEY = process.env.REFRESH_KEY || "refresh_secret_key_789";
 
-// === ĐĂNG KÝ ===
+// ĐĂNG KÝ 
 exports.register = async (req, res) => {
   const { email, password, ho_ten, so_dien_thoai, dia_chi } = req.body;
 
@@ -43,7 +43,7 @@ exports.register = async (req, res) => {
   }
 };
 
-// === ĐĂNG NHẬP ===
+// ĐĂNG NHẬP 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -107,7 +107,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// === REFRESH TOKEN (Cấp lại access token mới) ===
+//  REFRESH TOKEN (Cấp lại access token mới) 
 exports.refresh = async (req, res) => {
   const token = req.cookies.refreshToken;
 
@@ -126,7 +126,7 @@ exports.refresh = async (req, res) => {
   });
 };
 
-// === LOGOUT ===
+// LOGOUT 
 exports.logout = async (req, res) => {
   res.clearCookie("refreshToken", {
     httpOnly: true,

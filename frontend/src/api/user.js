@@ -1,5 +1,5 @@
-// File: src/api/user.js
-import api from "./axios"; // Gọi file cấu hình axios (nằm cùng thư mục api)
+
+import api from "./axios"; 
 
 export default {
   // 1. Lấy danh sách tất cả user (Dành cho Admin)

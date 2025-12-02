@@ -4,7 +4,7 @@ const path = require('path');
 // Cấu hình nơi lưu và tên file
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/'); // Cần tạo thư mục 'uploads' ở root
+        cb(null, 'uploads/'); 
     },
     filename: function (req, file, cb) {
         // Đặt tên file: timestamp-tengoc.jpg

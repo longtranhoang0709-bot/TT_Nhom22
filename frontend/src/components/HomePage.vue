@@ -8,12 +8,15 @@ const currentCategory = ref(null);
 const API_URL = "http://localhost:3000";
 const DEFAULT_IMG = "https://via.placeholder.com/150?text=No+Image";
 
+const currentPage = ref(1); // Trang hiện tại
+const totalPages = ref(1);  // Tổng số trang
+
 // Hàm gọi API
 // Thêm tham số categoryId để lọc theo
 const fetchProducts = async (categoryId = null) => {
   loading.value = true;
   try {
-    const params = { page: 1, limit: 10 };
+    const params = { page: currentPage.value, limit: 10 };
 
     if (categoryId) {
       params.category = categoryId;
@@ -23,6 +26,11 @@ const fetchProducts = async (categoryId = null) => {
 
     if (res.data && res.data.data && Array.isArray(res.data.data)) {
       products.value = res.data.data;
+
+      // Tính tổng số trang dựa trên 'total' backend trả về
+      const totalItems = res.data.pagination.total;
+      const limit = res.data.pagination.limit;
+      totalPages.value = Math.ceil(totalItems / limit);
     } else {
       products.value = res.data;
     }
@@ -33,9 +41,20 @@ const fetchProducts = async (categoryId = null) => {
   }
 };
 
+// Hàm chuyển trang
+const changePage = (newPage) => {
+  if (newPage >= 1 && newPage <= totalPages.value) {
+    currentPage.value = newPage;
+    fetchProducts(currentCategory.value); // Gọi lại API lấy trang mới
+    // Cuộn lên đầu trang cho đẹp
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
 // Sự kiện khi bấm vào menu bên trái
 const filterCategory = (id) => {
   currentCategory.value = id;
+  currentPage.value = 1;
   fetchProducts(id);
 };
 
@@ -122,6 +141,23 @@ onMounted(() => {
         <p v-if="products.length === 0" style="text-align: center; width: 100%">
           Chưa có sản phẩm nào trong danh mục này.
         </p>
+      </div>
+      <div class="pagination" v-if="!loading && products.length > 0">
+        <button 
+          :disabled="currentPage === 1" 
+          @click="changePage(currentPage - 1)"
+        >
+          &laquo; Trước
+        </button>
+
+        <span>Trang {{ currentPage }} / {{ totalPages }}</span>
+
+        <button 
+          :disabled="currentPage === totalPages" 
+          @click="changePage(currentPage + 1)"
+        >
+          Sau &raquo;
+        </button>
       </div>
     </main>
   </div>
@@ -228,5 +264,34 @@ h3 {
 }
 .add-btn:hover {
   background: #5d4037;
+}
+.pagination {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  background-color: #3e2723;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: #5d4037;
+}
+
+.pagination span {
+  font-weight: bold;
 }
 </style>

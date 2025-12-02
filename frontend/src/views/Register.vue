@@ -65,7 +65,7 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 const message = ref("");
 
-// Dữ liệu form map đúng với backend yêu cầu
+
 const form = ref({
   ho_ten: "",
   email: "",
@@ -85,7 +85,7 @@ const handleRegister = async () => {
     router.push("/login");
   } catch (error) {
     console.error(error);
-    // Hiển thị lỗi từ backend trả về (nếu có)
+    // Hiển thị lỗi từ backend trả về 
     message.value = error.response?.data || "Đăng ký thất bại!";
   }
 };

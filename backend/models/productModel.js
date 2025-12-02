@@ -1,8 +1,7 @@
 const db = require("../db");
-
-// Product Model với các phương thức tương tác DB
 const ProductModel = {
-  // Thêm tham số viewAll vào cuối (mặc định là false)
+  
+  // Lấy tất cả sản phẩm 
   getAll: async (limit, offset, categoryId, viewAll = false) => {
     let sql = `
             SELECT SP.*, HA.duong_dan_anh, KHO.so_luong 
@@ -117,7 +116,7 @@ const ProductModel = {
     try {
       await conn.beginTransaction();
 
-      // 1. Cập nhật thông tin văn bản (Giữ nguyên logic cũ)
+      // 1. Cập nhật thông tin văn bản 
       const fields = [];
       const values = [];
 
@@ -160,13 +159,12 @@ const ProductModel = {
 
       // 2. LOGIC: Xử lý cập nhật ảnh
       if (files && files.length > 0) {
-        // Cách đơn giản nhất: Xóa hết ảnh cũ, thêm ảnh mới
         await conn.query(
           "DELETE FROM HINH_ANH_SAN_PHAM WHERE ma_san_pham = ?",
           [id]
         );
 
-        // Thêm ảnh mới
+        
         const imgValues = files.map((file, idx) => [
           id,
           `/uploads/${file.filename}`,
@@ -177,8 +175,6 @@ const ProductModel = {
           [imgValues]
         );
       }
-
-      // 3. Commit nếu tất cả OK
       await conn.commit();
       return true;
     } catch (err) {
@@ -194,23 +190,18 @@ const ProductModel = {
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
-
-      // 1. Xóa trong kho trước (để tránh lỗi khóa ngoại)
       await conn.query("DELETE FROM KHO WHERE ma_san_pham = ?", [id]);
-
-      // 2. Xóa ảnh (Nếu DB chưa cài ON DELETE CASCADE)
       await conn.query("DELETE FROM HINH_ANH_SAN_PHAM WHERE ma_san_pham = ?", [
         id,
       ]);
 
-      // 3. Xóa sản phẩm khuyến mãi (Nếu có)
+      // 3. Xóa sản phẩm khuyến mãi 
       await conn.query(
         "DELETE FROM SAN_PHAM_KHUYEN_MAI WHERE ma_san_pham = ?",
         [id]
       );
 
       // 4. Cuối cùng xóa sản phẩm
-      // Lưu ý: Nếu sản phẩm đã có trong Đơn hàng, lệnh này vẫn sẽ lỗi (để bảo vệ dữ liệu lịch sử)
       await conn.query("DELETE FROM SAN_PHAM WHERE ma_san_pham = ?", [id]);
 
       await conn.commit();

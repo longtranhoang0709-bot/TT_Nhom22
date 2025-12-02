@@ -24,7 +24,6 @@ const UserModel = {
 
     // 4. Tạo User mới (Transaction: Tạo user + Gán quyền)
     create: async (conn, data) => {
-        // Lưu ý: conn được truyền từ bên ngoài vào để đảm bảo Transaction
         const [result] = await conn.query(`
             INSERT INTO NGUOI_DUNG (ma_nguoi_dung, ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi)
             VALUES (?, ?, ?, ?, ?, ?)

@@ -7,13 +7,16 @@ import {
   deleteProduct,
 } from "../api/products";
 
-// === BIẾN ===
+
 const products = ref([]);
 const showForm = ref(false);
 const isEditing = ref(false);
 const currentId = ref(null);
 const fileInput = ref(null);
 const debugData = ref(null);
+const currentPage = ref(1);
+const totalPages = ref(1);
+const limit = ref(10);
 
 const SERVER_URL = "http://localhost:3000";
 const DEFAULT_IMG = "https://via.placeholder.com/100?text=No+Img";
@@ -29,26 +32,40 @@ const form = ref({
 });
 const selectedFile = ref(null);
 
-// Danh sách danh mục (Có thể gọi API lấy về, tạm thời fix cứng)
+// Danh sách danh mục 
 const categories = [
   { id: 1, name: "Cà phê" },
   { id: 2, name: "Bánh ngọt" },
 ];
 
-// === HÀM ===
+
 // Tải danh sách sản phẩm
 const fetchProducts = async () => {
   try {
-    // THÊM THAM SỐ view_all: true VÀO ĐÂY
-    const res = await getAllProducts({ view_all: true });
+    
+    const params = {
+      page: currentPage.value,
+      limit: limit.value
+    };
+    const res = await getAllProducts(params);
 
     if (res.data && res.data.data && Array.isArray(res.data.data)) {
       products.value = res.data.data;
+      // Tính tổng số trang
+      const total = res.data.pagination.total;
+      totalPages.value = Math.ceil(total / limit.value);
     } else {
       products.value = res.data;
     }
   } catch (err) {
     alert("Lỗi tải danh sách: " + err.message);
+  }
+};
+
+const changePage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+    fetchProducts();
   }
 };
 
@@ -266,6 +283,25 @@ onMounted(fetchProducts);
         </tr>
       </tbody>
     </table>
+      <div class="pagination" v-if="products.length > 0">
+      <button 
+        :disabled="currentPage === 1" 
+        @click="changePage(currentPage - 1)"
+        class="btn-page"
+      >
+        &laquo; Trước
+      </button>
+      
+      <span>Trang {{ currentPage }} / {{ totalPages }}</span>
+      
+      <button 
+        :disabled="currentPage === totalPages" 
+        @click="changePage(currentPage + 1)"
+        class="btn-page"
+      >
+        Sau &raquo;
+      </button>
+    </div>
   </div>
 </template>
 
@@ -318,5 +354,25 @@ button {
 }
 .btn-delete {
   background: red;
+}
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+.btn-page {
+  background-color: #333;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 4px;
+}
+.btn-page:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+.btn-page:hover:not(:disabled) {
+  background-color: #555;
 }
 </style>

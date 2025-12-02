@@ -5,13 +5,13 @@ const verifyToken = require("../middlewares/authMiddleware");
 const verifyRole = require("../middlewares/roleMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
 
-// === PUBLIC ROUTES (Ai cũng xem được) ===
+// PUBLIC ROUTES 
 router.get("/", productController.getAllProducts);
 router.get("/:id", productController.getProductById);
 
-// === ADMIN ROUTES (Phải đăng nhập & là Admin) ===
+// ADMIN ROUTES (Phải đăng nhập & là Admin) 
 
-// Tạo sản phẩm mới (Có upload nhiều ảnh, tối đa 5 ảnh)
+// Tạo sản phẩm mới 
 router.post(
   "/",
   verifyToken,

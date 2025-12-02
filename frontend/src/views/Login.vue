@@ -47,8 +47,7 @@ const handleLogin = async () => {
     // 1. Lưu Access Token vào LocalStorage
     localStorage.setItem('accessToken', res.data.accessToken);
 
-    // 2. Lưu thông tin user (để hiển thị tên, role...) - tùy chọn
-    // Loại bỏ accessToken thừa ra khỏi object user trước khi lưu cho gọn
+    // 2. Lưu thông tin user 
     const { accessToken, ...userInfo } = res.data; 
     localStorage.setItem('user', JSON.stringify(userInfo));
 
