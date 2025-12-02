@@ -74,7 +74,7 @@ exports.login = async (req, res) => {
         role: user.ten_vai_tro,
       },
       ACCESS_KEY,
-      { expiresIn: "15m" }
+      { expiresIn: "20m" }
     );
 
     const refreshToken = jwt.sign(
@@ -119,7 +119,7 @@ exports.refresh = async (req, res) => {
     const newAccessToken = jwt.sign(
       { id: user.id, role: user.role },
       ACCESS_KEY,
-      { expiresIn: "15m" }
+      { expiresIn: "20m" }
     );
 
     res.json({ accessToken: newAccessToken });
