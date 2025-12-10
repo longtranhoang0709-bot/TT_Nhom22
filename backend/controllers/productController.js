@@ -7,17 +7,18 @@ exports.getAllProducts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
     const categoryId = req.query.category;
-
+    const keyword = req.query.name;
     const viewAll = req.query.view_all === "true";
 
     const products = await ProductModel.getAll(
       limit,
       offset,
       categoryId,
+      keyword,
       viewAll
     );
 
-    const total = await ProductModel.countTotal();
+    const total = await ProductModel.countTotal(categoryId, keyword, viewAll);
 
     res.status(200).json({
       data: products,

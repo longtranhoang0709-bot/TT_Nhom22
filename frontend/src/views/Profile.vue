@@ -4,12 +4,11 @@ import userApi from "../api/user";
 
 const user = ref({});
 const message = ref("");
+const variant = ref("success");
 
-// Lấy thông tin user đã lưu trong localStorage lúc đăng nhập
 const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = storedUser.ma_nguoi_dung; // Lấy ID
+const userId = storedUser.ma_nguoi_dung;
 
-// Hàm tải thông tin
 const fetchProfile = async () => {
   if (!userId) return;
   try {
@@ -20,7 +19,6 @@ const fetchProfile = async () => {
   }
 };
 
-// Hàm lưu thay đổi
 const handleUpdate = async () => {
   try {
     await userApi.update(userId, {
@@ -28,53 +26,49 @@ const handleUpdate = async () => {
       so_dien_thoai: user.value.so_dien_thoai,
       dia_chi: user.value.dia_chi,
     });
-    message.value = "Đã cập nhật thành công!";
-    // Cập nhật lại localStorage để đồng bộ tên hiển thị
+    message.value = "Cập nhật thành công!";
+    variant.value = "success";
     localStorage.setItem("user", JSON.stringify(user.value));
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    message.value = "Lỗi: " + err.message;
+    variant.value = "danger";
   }
 };
 
 onMounted(() => {
-  if (!userId) {
-    alert("Bạn chưa đăng nhập!");
-  } else {
-    fetchProfile();
-  }
+  if (!userId) alert("Bạn chưa đăng nhập!");
+  else fetchProfile();
 });
 </script>
 
 <template>
-  <div style="padding: 20px">
-    <h2>Thông tin của tôi</h2>
-    <form @submit.prevent="handleUpdate">
-      <p>
-        Email: <b>{{ user.email }}</b> (Không thể sửa)
-      </p>
+  <BContainer class="my-5 d-flex justify-content-center">
+    <BCard title="Hồ sơ cá nhân" class="shadow w-100" style="max-width: 600px">
+      <BForm @submit.prevent="handleUpdate">
+        <BFormGroup label="Email (Không thể sửa)" class="mb-3">
+            <BFormInput :model-value="user.email" disabled />
+        </BFormGroup>
 
-      <div style="margin-bottom: 10px">
-        <label>Họ tên:</label><br />
-        <input v-model="user.ho_ten" style="padding: 5px; width: 300px" />
-      </div>
+        <BFormGroup label="Họ tên" class="mb-3">
+          <BFormInput v-model="user.ho_ten" required />
+        </BFormGroup>
 
-      <div style="margin-bottom: 10px">
-        <label>Số điện thoại:</label><br />
-        <input
-          v-model="user.so_dien_thoai"
-          style="padding: 5px; width: 300px"
-        />
-      </div>
+        <BFormGroup label="Số điện thoại" class="mb-3">
+          <BFormInput v-model="user.so_dien_thoai" />
+        </BFormGroup>
 
-      <div style="margin-bottom: 10px">
-        <label>Địa chỉ:</label><br />
-        <input v-model="user.dia_chi" style="padding: 5px; width: 300px" />
-      </div>
+        <BFormGroup label="Địa chỉ" class="mb-4">
+          <BFormInput v-model="user.dia_chi" />
+        </BFormGroup>
 
-      <button type="submit" style="padding: 8px 20px; cursor: pointer">
-        Lưu thay đổi
-      </button>
-    </form>
-    <p style="color: green">{{ message }}</p>
-  </div>
+        <BAlert :model-value="!!message" :variant="variant" dismissible @close="message=''">
+            {{ message }}
+        </BAlert>
+
+        <div class="d-flex justify-content-end">
+            <BButton type="submit" variant="primary">Lưu thay đổi</BButton>
+        </div>
+      </BForm>
+    </BCard>
+  </BContainer>
 </template>

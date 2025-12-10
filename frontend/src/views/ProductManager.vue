@@ -7,19 +7,18 @@ import {
   deleteProduct,
 } from "../api/products";
 
-
 const products = ref([]);
-const showForm = ref(false);
+const showModal = ref(false); 
 const isEditing = ref(false);
 const currentId = ref(null);
-const fileInput = ref(null);
-const debugData = ref(null);
+const selectedFile = ref(null);
+const fileInputKey = ref(0); 
+const searchText = ref("");
+
 const currentPage = ref(1);
 const totalPages = ref(1);
 const limit = ref(10);
-
 const SERVER_URL = "http://localhost:3000";
-const DEFAULT_IMG = "https://via.placeholder.com/100?text=No+Img";
 
 // Dữ liệu form 
 const form = ref({
@@ -28,55 +27,9 @@ const form = ref({
   mo_ta: "",
   so_luong: 0,
   ma_danh_muc: 1,
-  trang_thai: 1, // Mặc định là 1 (Hiện)
+  trang_thai: 1, 
 });
-const selectedFile = ref(null);
 
-// Danh sách danh mục 
-const categories = [
-  { id: 1, name: "Cà phê" },
-  { id: 2, name: "Bánh ngọt" },
-];
-
-
-// Tải danh sách sản phẩm
-const fetchProducts = async () => {
-  try {
-    
-    const params = {
-      page: currentPage.value,
-      limit: limit.value
-    };
-    const res = await getAllProducts(params);
-
-    if (res.data && res.data.data && Array.isArray(res.data.data)) {
-      products.value = res.data.data;
-      // Tính tổng số trang
-      const total = res.data.pagination.total;
-      totalPages.value = Math.ceil(total / limit.value);
-    } else {
-      products.value = res.data;
-    }
-  } catch (err) {
-    alert("Lỗi tải danh sách: " + err.message);
-  }
-};
-
-const changePage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page;
-    fetchProducts();
-  }
-};
-
-// Lấy đường dẫn ảnh
-const getImageUrl = (path) => {
-  if (!path) return DEFAULT_IMG;
-  if (path.startsWith("/")) return `${SERVER_URL}${path}`;
-  return path;
-};
-
-//  Đặt lại form
 const resetForm = () => {
   form.value = {
     ten_san_pham: "",
@@ -87,34 +40,60 @@ const resetForm = () => {
     trang_thai: 1,
   };
   selectedFile.value = null;
-  showForm.value = false;
+  showModal.value = false; 
   isEditing.value = false;
   currentId.value = null;
-  if (fileInput.value) fileInput.value.value = "";
+  fileInputKey.value++; 
 };
 
-// Mở form thêm mới
-const openAddForm = () => {
+const openAddModal = () => {
   resetForm();
-  showForm.value = true;
+  showModal.value = true; 
 };
 
-// Mở form sửa
-const openEditForm = (p) => {
+const openEditModal = (p) => {
   form.value = {
     ten_san_pham: p.ten_san_pham,
     gia: p.gia,
     mo_ta: p.mo_ta,
     so_luong: p.so_luong || 0,
     ma_danh_muc: p.ma_danh_muc,
-    trang_thai: p.trang_thai, // Lấy trạng thái từ DB
+    trang_thai: p.trang_thai,
   };
   currentId.value = p.ma_san_pham;
-  showForm.value = true;
+  showModal.value = true; 
   isEditing.value = true;
 };
 
-//  Xử lý chọn file
+// Tải danh sách sản phẩm
+const fetchProducts = async () => {
+  try {
+    const params = {
+      page: currentPage.value,
+      limit: limit.value,
+      view_all: true
+    };
+    if (searchText.value) params.name = searchText.value;
+    const res = await getAllProducts(params);
+
+    if (res.data && res.data.data && Array.isArray(res.data.data)) {
+      products.value = res.data.data;
+      const total = res.data.pagination.total;
+      totalPages.value = Math.ceil(total / limit.value);
+    } else {
+      products.value = res.data;
+    }
+  } catch (err) {
+    alert("Lỗi tải danh sách: " + err.message);
+  }
+};
+// Xử lý tìm kiếm
+const onSearch = () => {
+  currentPage.value = 1;
+  fetchProducts();
+};
+
+// Xử lý chọn file
 const handleFile = (event) => {
   selectedFile.value = event.target.files[0];
 };
@@ -128,7 +107,7 @@ const handleSubmit = async () => {
     formData.append("mo_ta", form.value.mo_ta);
     formData.append("so_luong", form.value.so_luong);
     formData.append("ma_danh_muc", form.value.ma_danh_muc);
-    formData.append("trang_thai", form.value.trang_thai); // Gửi trạng thái lên
+    formData.append("trang_thai", form.value.trang_thai);
 
     if (selectedFile.value) {
       formData.append("images", selectedFile.value);
@@ -141,108 +120,50 @@ const handleSubmit = async () => {
       await createProduct(formData);
       alert("Thêm mới thành công!");
     }
-    resetForm();
-    fetchProducts();
+    
+    showModal.value = false; // Đóng modal trước
+    fetchProducts(); // Load lại dữ liệu
   } catch (err) {
     console.error(err);
     alert("Lỗi: " + (err.response?.data?.error || err.message));
   }
 };
 
-// Xóa sản phẩm
 const handleDelete = async (id) => {
-  if (!confirm("CẢNH BÁO: Bạn có chắc muốn xóa VĨNH VIỄN sản phẩm này?"))
-    return;
-
+  if (!confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
   try {
     await deleteProduct(id);
-    alert("Xóa thành công!");
-    fetchProducts(); // Tải lại danh sách
+    fetchProducts();
   } catch (err) {
-    // Hiển thị thông báo lỗi cụ thể từ Backend
-    const msg = err.response?.data?.error || "Xóa thất bại!";
-    alert(msg);
+    alert("Xóa thất bại!");
   }
-};
-
-// Hàm lấy tên danh mục hiển thị
-const getCategoryName = (id) => {
-  const cat = categories.find((c) => c.id === id);
-  return cat ? cat.name : id;
 };
 
 onMounted(fetchProducts);
 </script>
 
 <template>
-  <div class="admin-container">
-    <h1>Quản lý Sản phẩm</h1>
-    <button v-if="!showForm" @click="openAddForm" class="btn-create">
-      + Thêm Sản Phẩm
-    </button>
+  <BContainer fluid class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h1>Quản lý Sản phẩm</h1>
+      
+      <div class="d-flex gap-2">
+        <BInputGroup style="width: 250px;">
+          <BFormInput 
+            v-model="searchText" 
+            placeholder="Tìm theo tên..." 
+            @keyup.enter="onSearch"
+          />
+          <BButton variant="outline-secondary" @click="onSearch">Tìm</BButton>
+        </BInputGroup>
 
-    <div v-if="showForm" class="form-box">
-      <h3>{{ isEditing ? "Sửa Sản Phẩm" : "Thêm Sản Phẩm" }}</h3>
-      <form @submit.prevent="handleSubmit">
-        <div class="form-row">
-          <label>Tên SP:</label>
-          <input v-model="form.ten_san_pham" required />
-        </div>
-        <div class="form-row">
-          <label>Giá:</label>
-          <input v-model="form.gia" type="number" required />
-        </div>
-        <div class="form-row">
-          <label>Danh mục:</label>
-          <select v-model="form.ma_danh_muc" style="padding: 5px; width: 314px">
-            <option :value="1">Cà phê</option>
-            <option :value="2">Bánh ngọt</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Trạng thái:</label>
-          <select v-model="form.trang_thai" style="padding: 5px; width: 314px">
-            <option :value="1">Đang bán (Hiện)</option>
-            <option :value="0">Ngừng bán (Ẩn)</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Kho:</label>
-          <input v-model="form.so_luong" type="number" />
-        </div>
-        <div class="form-row">
-          <label>Mô tả:</label>
-          <textarea v-model="form.mo_ta"></textarea>
-        </div>
-
-        <div class="form-row">
-          <label>Ảnh:</label>
-          <input type="file" @change="handleFile" ref="fileInput" />
-          <p
-            v-if="isEditing"
-            style="font-size: 0.8em; color: gray; margin-left: 85px"
-          >
-            (Bỏ trống nếu muốn giữ ảnh cũ)
-          </p>
-        </div>
-
-        <div style="margin-top: 10px">
-          <button type="submit" class="btn-save">Lưu</button>
-          <button type="button" @click="resetForm" class="btn-cancel">
-            Hủy
-          </button>
-        </div>
-      </form>
+        <BButton variant="success" @click="openAddModal">+ Thêm Mới</BButton>
+      </div>
     </div>
 
-    <table
-      border="1"
-      cellpadding="10"
-      cellspacing="0"
-      style="width: 100%; border-collapse: collapse"
-    >
-      <thead>
-        <tr style="background: #eee">
+    <BTableSimple hover responsive bordered striped caption-top>
+      <thead class="table-dark">
+        <tr>
           <th>ID</th>
           <th>Ảnh</th>
           <th>Tên</th>
@@ -256,123 +177,92 @@ onMounted(fetchProducts);
         <tr v-for="p in products" :key="p.ma_san_pham">
           <td>{{ p.ma_san_pham }}</td>
           <td>
-            <img
-              :src="getImageUrl(p.duong_dan_anh)"
-              width="50"
-              height="50"
-              style="object-fit: cover; border: 1px solid #ddd"
+            <BImg 
+              :src="p.duong_dan_anh ? `${SERVER_URL}${p.duong_dan_anh}` : 'https://via.placeholder.com/50'" 
+              thumbnail 
+              fluid 
+              style="width: 50px; height: 50px; object-fit: cover"
             />
           </td>
           <td>{{ p.ten_san_pham }}</td>
-          <td>{{ getCategoryName(p.ma_danh_muc) }}</td>
+          <td>
+             <BBadge :variant="p.ma_danh_muc === 1 ? 'warning' : 'info'">
+               {{ p.ma_danh_muc === 1 ? 'Cà phê' : 'Bánh ngọt' }}
+             </BBadge>
+          </td>
           <td>{{ new Intl.NumberFormat("vi-VN").format(p.gia) }} đ</td>
           <td>
-            <span
-              v-if="p.trang_thai === 1"
-              style="color: green; font-weight: bold"
-              >Hiện</span
-            >
-            <span v-else style="color: red; font-weight: bold">Ẩn</span>
+            <BBadge :variant="p.trang_thai === 1 ? 'success' : 'danger'">
+              {{ p.trang_thai === 1 ? 'Hiện' : 'Ẩn' }}
+            </BBadge>
           </td>
           <td>
-            <button @click="openEditForm(p)" class="btn-edit">Sửa</button>
-            <button @click="handleDelete(p.ma_san_pham)" class="btn-delete">
-              Xóa
-            </button>
+            <BButtonGroup size="sm">
+              <BButton variant="warning" @click="openEditModal(p)">Sửa</BButton>
+              <BButton variant="danger" @click="handleDelete(p.ma_san_pham)">Xóa</BButton>
+            </BButtonGroup>
           </td>
         </tr>
       </tbody>
-    </table>
-      <div class="pagination" v-if="products.length > 0">
-      <button 
-        :disabled="currentPage === 1" 
-        @click="changePage(currentPage - 1)"
-        class="btn-page"
-      >
-        &laquo; Trước
-      </button>
-      
-      <span>Trang {{ currentPage }} / {{ totalPages }}</span>
-      
-      <button 
-        :disabled="currentPage === totalPages" 
-        @click="changePage(currentPage + 1)"
-        class="btn-page"
-      >
-        Sau &raquo;
-      </button>
-    </div>
-  </div>
-</template>
+    </BTableSimple>
 
-<style scoped>
-/* Giữ nguyên CSS cũ */
-.admin-container {
-  padding: 20px;
-}
-.form-box {
-  background: #f8f9fa;
-  padding: 20px;
-  border: 1px solid #ddd;
-  margin-bottom: 20px;
-}
-.form-row {
-  margin-bottom: 10px;
-}
-.form-row label {
-  display: inline-block;
-  width: 80px;
-  font-weight: bold;
-}
-.form-row input,
-.form-row textarea {
-  padding: 5px;
-  width: 300px;
-}
-button {
-  cursor: pointer;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 3px;
-  margin-right: 5px;
-  color: white;
-}
-.btn-create {
-  background: green;
-  padding: 10px 15px;
-  margin-bottom: 15px;
-}
-.btn-save {
-  background: blue;
-}
-.btn-cancel {
-  background: gray;
-}
-.btn-edit {
-  background: orange;
-  color: black;
-}
-.btn-delete {
-  background: red;
-}
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 15px;
-}
-.btn-page {
-  background-color: #333;
-  color: white;
-  padding: 8px 15px;
-  border-radius: 4px;
-}
-.btn-page:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.btn-page:hover:not(:disabled) {
-  background-color: #555;
-}
-</style>
+    <BModal 
+      v-model="showModal" 
+      :title="isEditing ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới'"
+      hide-footer
+    >
+      <BForm @submit.stop.prevent="handleSubmit">
+        <BFormGroup label="Tên sản phẩm" class="mb-2">
+          <BFormInput v-model="form.ten_san_pham" required />
+        </BFormGroup>
+
+        <BRow>
+          <BCol>
+            <BFormGroup label="Giá" class="mb-2">
+              <BFormInput type="number" v-model="form.gia" required />
+            </BFormGroup>
+          </BCol>
+          <BCol>
+             <BFormGroup label="Kho" class="mb-2">
+              <BFormInput type="number" v-model="form.so_luong" />
+            </BFormGroup>
+          </BCol>
+        </BRow>
+
+        <BRow>
+          <BCol>
+            <BFormGroup label="Danh mục" class="mb-2">
+              <BFormSelect v-model="form.ma_danh_muc">
+                <option :value="1">Cà phê</option>
+                <option :value="2">Bánh ngọt</option>
+              </BFormSelect>
+            </BFormGroup>
+          </BCol>
+          <BCol>
+            <BFormGroup label="Trạng thái" class="mb-2">
+              <BFormSelect v-model="form.trang_thai">
+                <option :value="1">Đang bán</option>
+                <option :value="0">Ngừng bán</option>
+              </BFormSelect>
+            </BFormGroup>
+          </BCol>
+        </BRow>
+
+        <BFormGroup label="Mô tả" class="mb-2">
+          <BFormTextarea v-model="form.mo_ta" rows="3" />
+        </BFormGroup>
+
+        <BFormGroup label="Ảnh sản phẩm">
+          <BFormFile :key="fileInputKey" @change="handleFile" />
+          <div v-if="isEditing" class="text-muted small mt-1">(Bỏ qua nếu không đổi ảnh)</div>
+        </BFormGroup>
+
+        <div class="d-flex justify-content-end mt-3 gap-2">
+           <BButton variant="secondary" @click="showModal = false">Hủy</BButton>
+           <BButton type="submit" variant="primary">Lưu thay đổi</BButton>
+        </div>
+      </BForm>
+    </BModal>
+
+  </BContainer>
+</template>

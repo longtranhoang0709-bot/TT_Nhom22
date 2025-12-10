@@ -21,4 +21,8 @@ export default {
   delete(id) {
     return api.delete(`/users/${id}`);
   },
+  // 5. Tạo user mới (Dành cho Admin)
+  create(data) {
+    return api.post("/users", data); 
+  },
 };
