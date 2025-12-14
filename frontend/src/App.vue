@@ -37,105 +37,50 @@ checkLogin();
 
 <template>
   <div id="app">
-    <nav class="navbar">
-      <div class="nav-left">
-        <router-link to="/" class="logo">☕ Brew Haven</router-link>
-      </div>
+    <BNavbar toggleable="lg" variant="dark" v-b-color-mode="'dark'">
+      <BNavbarBrand to="/">Cà Phê PL</BNavbarBrand>
 
-      <div class="nav-right">
-        <div v-if="!currentUser">
-          <router-link to="/login" class="nav-link">Đăng nhập</router-link>
-          <router-link to="/register" class="nav-link btn-register"
-            >Đăng ký</router-link
-          >
-        </div>
+      <BNavbarToggle target="nav-collapse" />
 
-        <div v-else>
-          <span class="user-name"
-            >Chào, <b>{{ currentUser.ho_ten }}</b></span
-          >
+      <BCollapse id="nav-collapse" is-nav>
+        <BNavbarNav class="ms-auto mb-2 mb-lg-0">
+          <template v-if="!currentUser">
+            <BNavItem to="/login">Đăng nhập</BNavItem>
+            <BNavItem to="/register">Đăng ký</BNavItem>
+          </template>
 
-          <router-link to="/profile" class="nav-link">Cá nhân</router-link>
+          <BNavItemDropdown v-else right>
+            <template #button-content>
+              Xin chào, <b>{{ currentUser.ho_ten }}</b>
+            </template>
 
-          <span
-            class="admin-group"
-            v-if="
-              currentUser &&
-              currentUser.roles &&
-              currentUser.roles.includes('Admin')
-            "
-          >
-            <router-link to="/admin/users" class="nav-link admin-link"
-              >Khách hàng</router-link
+            <BDropdownItem to="/profile">Hồ sơ cá nhân</BDropdownItem>
+
+            <template v-if="currentUser.roles?.includes('Admin')">
+              <BDropdownDivider />
+              <BDropdownItem to="/admin/products"
+                >Quản lý Sản phẩm</BDropdownItem
+              >
+              <BDropdownItem to="/admin/users"
+                >Quản lý Khách hàng</BDropdownItem
+              >
+            </template>
+
+            <BDropdownDivider />
+            <BDropdownItem @click="handleLogout" variant="danger"
+              >Đăng xuất</BDropdownItem
             >
-            <router-link to="/admin/products" class="nav-link admin-link"
-              >Sản Phẩm</router-link
-            >
-          </span>
+          </BNavItemDropdown>
+        </BNavbarNav>
+      </BCollapse>
+    </BNavbar>
 
-          <button @click="handleLogout" class="btn-logout">Đăng xuất</button>
-        </div>
-      </div>
-    </nav>
-
-    <div class="content">
-      <router-view />
-    </div>
+    <router-view />
   </div>
 </template>
 
 <style>
 body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
-.navbar {
-  background-color: #333;
-  padding: 15px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-}
-.logo {
-  color: #fff;
-  font-weight: bold;
-  font-size: 1.2rem;
-  text-decoration: none;
-}
-.nav-link {
-  color: #ddd;
-  text-decoration: none;
-  margin-left: 15px;
-}
-.nav-link:hover {
-  color: white;
-}
-.btn-register {
-  background-color: #4caf50;
-  padding: 5px 10px;
-  border-radius: 4px;
-  color: white;
-}
-.btn-logout {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  margin-left: 15px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.admin-group {
-  border-left: 1px solid #555;
-  padding-left: 10px;
-  margin-left: 10px;
-}
-.admin-link {
-  color: #ff9800;
-  font-weight: bold;
-}
-.content {
-  padding: 20px;
+  background-color: #f8f9fa;
 }
 </style>

@@ -1,76 +1,90 @@
-<template>
-  <div style="padding: 20px">
-    <h2>Đăng Nhập</h2>
-    <form @submit.prevent="handleLogin">
-      <div>
-        <label>Email:</label> <br />
-        <input v-model="email" type="email" required placeholder="Nhập email" />
-      </div>
-
-      <div style="margin-top: 10px">
-        <label>Mật khẩu:</label> <br />
-        <input
-          v-model="password"
-          type="password"
-          required
-          placeholder="Nhập mật khẩu"
-        />
-      </div>
-
-      <button type="submit" style="margin-top: 20px">Đăng Nhập</button>
-      <router-link
-        to="/forgot-password"
-        style="display: block; margin-top: 10px"
-        >Quên mật khẩu?</router-link
-      >
-    </form>
-
-    <p v-if="message" style="color: red; margin-top: 10px">{{ message }}</p>
-
-    <p>
-      Chưa có tài khoản?
-      <router-link to="/register">Đăng ký tại đây</router-link>
-    </p>
-  </div>
-</template>
-
 <script setup>
 import { ref } from "vue";
 import api from "../api/axios";
 import { useRouter } from "vue-router";
 
-// Xử lý đăng nhập
 const router = useRouter();
 const email = ref("");
 const password = ref("");
 const message = ref("");
+const loading = ref(false);
 
-// Hàm xử lý đăng nhập
 const handleLogin = async () => {
+  loading.value = true;
   try {
     message.value = "";
-
-    // Gọi API Login
     const res = await api.post("/auth/login", {
       email: email.value,
       password: password.value,
     });
 
-    // 1. Lưu Access Token vào LocalStorage
     localStorage.setItem("accessToken", res.data.accessToken);
-
-    // 2. Lưu thông tin user
     const { accessToken, ...userInfo } = res.data;
     localStorage.setItem("user", JSON.stringify(userInfo));
 
-    alert("Đăng nhập thành công!");
-    router.push("/profile");
-
-    // 3. Chuyển hướng về trang chủ
-    router.push("/");
+    if (userInfo.roles && userInfo.roles.includes("Admin")) {
+      router.push("/admin/products"); // Chuyển đến trang quản lý sản phẩm nếu là Admin
+    } else {
+      router.push("/");
+    }
   } catch (error) {
-    console.error(error);
     message.value = error.response?.data || "Email hoặc mật khẩu không đúng!";
+  } finally {
+    loading.value = false;
   }
 };
 </script>
+
+<template>
+  <BContainer
+    class="d-flex justify-content-center align-items-center"
+    style="min-height: 80vh"
+  >
+    <BCard class="shadow p-3" style="max-width: 400px; width: 100%">
+      <h2 class="text-center mb-4">Đăng Nhập</h2>
+
+      <BForm @submit.stop.prevent="handleLogin">
+        <BFormGroup label="Email:" class="mb-3">
+          <BFormInput
+            v-model="email"
+            type="email"
+            required
+            placeholder="Nhập email..."
+          />
+        </BFormGroup>
+
+        <BFormGroup label="Mật khẩu:" class="mb-4">
+          <BFormInput
+            v-model="password"
+            type="password"
+            required
+            placeholder="Nhập mật khẩu..."
+          />
+        </BFormGroup>
+
+        <BAlert
+          :model-value="!!message"
+          variant="danger"
+          dismissible
+          @close="message = ''"
+        >
+          {{ message }}
+        </BAlert>
+
+        <BButton
+          type="submit"
+          variant="primary"
+          class="w-100"
+          :disabled="loading"
+        >
+          {{ loading ? "Đang xử lý..." : "Đăng Nhập" }}
+        </BButton>
+      </BForm>
+
+      <div class="text-center mt-3">
+        Chưa có tài khoản?
+        <router-link to="/register">Đăng ký ngay</router-link>
+      </div>
+    </BCard>
+  </BContainer>
+</template>

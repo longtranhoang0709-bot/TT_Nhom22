@@ -1,6 +1,15 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router/index.js";
+//css
+import 'bootstrap/dist/css/bootstrap.css'
+import 'bootstrap-vue-next/dist/bootstrap-vue-next.css'
 
-// Tạo và gắn kết Vue App với Router
-createApp(App).use(router).mount("#app");
+//plugins
+import { createBootstrap } from "bootstrap-vue-next";
+const app = createApp(App);
+app.use(router);
+app.use(createBootstrap());
+app.mount("#app");
+
+

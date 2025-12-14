@@ -2,7 +2,7 @@ const db = require("../db");
 const ProductModel = {
   
   // Lấy tất cả sản phẩm 
-  getAll: async (limit, offset, categoryId, viewAll = false) => {
+  getAll: async (limit, offset, categoryId, keyword, viewAll = false) => {
     let sql = `
             SELECT SP.*, HA.duong_dan_anh, KHO.so_luong 
             FROM SAN_PHAM SP
@@ -11,7 +11,7 @@ const ProductModel = {
             WHERE 1=1 
         `;
 
-    // LOGIC: Chỉ lọc trạng thái=1 nếu KHÔNG PHẢI là chế độ xem tất cả
+    
     if (!viewAll) {
       sql += " AND SP.trang_thai = 1";
     }
@@ -22,7 +22,10 @@ const ProductModel = {
       sql += " AND SP.ma_danh_muc = ?";
       params.push(categoryId);
     }
-
+    if (keyword) {
+      sql += " AND SP.ten_san_pham LIKE ?";
+      params.push(`%${keyword}%`);
+    }
     sql += " ORDER BY SP.ngay_tao DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
@@ -30,11 +33,24 @@ const ProductModel = {
     return rows;
   },
 
-  //  Đếm tổng (Hỗ trợ phân trang)
-  countTotal: async () => {
-    const [rows] = await db.query(
-      "SELECT COUNT(*) as total FROM SAN_PHAM WHERE trang_thai = 1"
-    );
+  //  Đếm tổng 
+  countTotal: async (categoryId, keyword, viewAll = false) => {
+    let sql = "SELECT COUNT(*) as total FROM SAN_PHAM WHERE 1=1";
+    const params = [];
+
+    if (!viewAll) sql += " AND trang_thai = 1";
+
+    if (categoryId) {
+      sql += " AND ma_danh_muc = ?";
+      params.push(categoryId);
+    }
+
+    if (keyword) {
+      sql += " AND ten_san_pham LIKE ?";
+      params.push(`%${keyword}%`);
+    }
+
+    const [rows] = await db.query(sql, params);
     return rows[0].total;
   },
 

@@ -1,62 +1,3 @@
-<template>
-  <div style="padding: 20px">
-    <h2>Đăng Ký Tài Khoản</h2>
-    <form @submit.prevent="handleRegister">
-      <div>
-        <label>Họ tên (*):</label> <br />
-        <input
-          v-model="form.ho_ten"
-          type="text"
-          required
-          placeholder="Nhập họ tên"
-        />
-      </div>
-
-      <div style="margin-top: 10px">
-        <label>Email (*):</label> <br />
-        <input
-          v-model="form.email"
-          type="email"
-          required
-          placeholder="Nhập email"
-        />
-      </div>
-
-      <div style="margin-top: 10px">
-        <label>Mật khẩu (*):</label> <br />
-        <input
-          v-model="form.password"
-          type="password"
-          required
-          placeholder="Nhập mật khẩu"
-        />
-      </div>
-
-      <div style="margin-top: 10px">
-        <label>Số điện thoại:</label> <br />
-        <input
-          v-model="form.so_dien_thoai"
-          type="text"
-          placeholder="Nhập SĐT"
-        />
-      </div>
-
-      <div style="margin-top: 10px">
-        <label>Địa chỉ:</label> <br />
-        <input v-model="form.dia_chi" type="text" placeholder="Nhập địa chỉ" />
-      </div>
-
-      <button type="submit" style="margin-top: 20px">Đăng Ký</button>
-    </form>
-
-    <p v-if="message" style="color: red; margin-top: 10px">{{ message }}</p>
-
-    <p>
-      Đã có tài khoản? <router-link to="/login">Đăng nhập ngay</router-link>
-    </p>
-  </div>
-</template>
-
 <script setup>
 import { ref } from "vue";
 import api from "../api/axios";
@@ -64,7 +5,7 @@ import { useRouter } from "vue-router";
 
 const router = useRouter();
 const message = ref("");
-
+const loading = ref(false);
 
 const form = ref({
   ho_ten: "",
@@ -74,19 +15,63 @@ const form = ref({
   dia_chi: "",
 });
 
-// Hàm xử lý đăng ký
 const handleRegister = async () => {
+  loading.value = true;
   try {
-    message.value = ""; // Reset thông báo
-    // Gọi API Register
+    message.value = "";
     await api.post("/auth/register", form.value);
-
-    alert("Đăng ký thành công! Bấm OK để chuyển sang trang đăng nhập.");
+    alert("Đăng ký thành công!");
     router.push("/login");
   } catch (error) {
-    console.error(error);
-    // Hiển thị lỗi từ backend trả về 
     message.value = error.response?.data || "Đăng ký thất bại!";
+  } finally {
+    loading.value = false;
   }
 };
 </script>
+
+<template>
+  <BContainer class="d-flex justify-content-center align-items-center my-5">
+    <BCard class="shadow p-3" style="max-width: 500px; width: 100%">
+      <h2 class="text-center mb-4">Đăng Ký Tài Khoản</h2>
+      
+      <BForm @submit.stop.prevent="handleRegister">
+        <BFormGroup label="Họ tên (*)" class="mb-2">
+          <BFormInput v-model="form.ho_ten" required placeholder="Nguyễn Văn A" />
+        </BFormGroup>
+
+        <BFormGroup label="Email (*)" class="mb-2">
+          <BFormInput v-model="form.email" type="email" required placeholder="email@example.com" />
+        </BFormGroup>
+
+        <BFormGroup label="Mật khẩu (*)" class="mb-2">
+          <BFormInput v-model="form.password" type="password" required />
+        </BFormGroup>
+
+        <BRow>
+          <BCol>
+            <BFormGroup label="Số điện thoại" class="mb-2">
+              <BFormInput v-model="form.so_dien_thoai" />
+            </BFormGroup>
+          </BCol>
+        </BRow>
+
+        <BFormGroup label="Địa chỉ" class="mb-3">
+          <BFormInput v-model="form.dia_chi" placeholder="Số nhà, Tên đường..." />
+        </BFormGroup>
+
+        <BAlert :model-value="!!message" variant="danger">
+          {{ message }}
+        </BAlert>
+
+        <BButton type="submit" variant="success" class="w-100" :disabled="loading">
+          {{ loading ? 'Đang đăng ký...' : 'Đăng Ký' }}
+        </BButton>
+      </BForm>
+
+      <div class="text-center mt-3">
+        Đã có tài khoản? <router-link to="/login">Đăng nhập</router-link>
+      </div>
+    </BCard>
+  </BContainer>
+</template>
