@@ -39,7 +39,7 @@ checkLogin();
   <div id="app">
     <nav class="navbar">
       <div class="nav-left">
-        <router-link to="/" class="logo">☕ Cà Phê PL</router-link>
+        <router-link to="/" class="logo">☕ Brew Haven</router-link>
       </div>
 
       <div class="nav-right">

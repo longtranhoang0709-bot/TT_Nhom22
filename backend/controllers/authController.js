@@ -1,3 +1,5 @@
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
 const db = require("../db");
@@ -6,7 +8,7 @@ const jwt = require("jsonwebtoken");
 const ACCESS_KEY = process.env.ACCESS_KEY || "access_secret_key_123";
 const REFRESH_KEY = process.env.REFRESH_KEY || "refresh_secret_key_789";
 
-// ĐĂNG KÝ 
+// ĐĂNG KÝ
 exports.register = async (req, res) => {
   const { email, password, ho_ten, so_dien_thoai, dia_chi } = req.body;
 
@@ -43,7 +45,7 @@ exports.register = async (req, res) => {
   }
 };
 
-// ĐĂNG NHẬP 
+// ĐĂNG NHẬP
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -107,7 +109,7 @@ exports.login = async (req, res) => {
   }
 };
 
-//  REFRESH TOKEN (Cấp lại access token mới) 
+//  REFRESH TOKEN (Cấp lại access token mới)
 exports.refresh = async (req, res) => {
   const token = req.cookies.refreshToken;
 
@@ -126,7 +128,7 @@ exports.refresh = async (req, res) => {
   });
 };
 
-// LOGOUT 
+// LOGOUT
 exports.logout = async (req, res) => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
@@ -134,4 +136,100 @@ exports.logout = async (req, res) => {
     sameSite: "strict",
   });
   res.status(200).json("Đăng xuất thành công!");
+};
+
+// 3. QUÊN MẬT KHẨU (Gửi mail)
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // B1: Kiểm tra email có tồn tại không
+    const [users] = await db.query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [
+      email,
+    ]);
+    if (users.length === 0)
+      return res.status(404).json("Email không tồn tại trong hệ thống!");
+
+    // B2: Tạo token ngẫu nhiên
+    const token = crypto.randomBytes(32).toString("hex");
+
+    // B3: Lưu xuống DB (Xóa token cũ nếu có -> Lưu token mới)
+    await db.query("DELETE FROM PASSWORD_RESETS WHERE email = ?", [email]);
+    await db.query("INSERT INTO PASSWORD_RESETS (email, token) VALUES (?, ?)", [
+      email,
+      token,
+    ]);
+
+    // B4: Cấu hình gửi mail (LƯU Ý: Nên để email/pass trong file .env)
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "dohoangphuoc10@gmail.com", // Email của bạn
+        pass: "eswa qlpu sbpf gczk", // Mật khẩu ứng dụng của bạn
+      },
+    });
+
+    // Link reset trỏ về Frontend (Ví dụ: http://localhost:5173/reset-password?token=...)
+    const resetLink = `http://localhost:5173/reset-password?token=${token}`;
+
+    // Nội dung mail
+    const mailOptions = {
+      from: '"Coffee Shop" <no-reply@coffeeshop.com>',
+      to: email,
+      subject: "Đặt lại mật khẩu",
+      text: `Click vào link này để đặt lại mật khẩu của bạn: ${resetLink}`,
+      html: `<p>Bạn đã yêu cầu đặt lại mật khẩu.</p>
+             <p>Click vào link sau để đặt lại (Hết hạn trong 15 phút):</p>
+             <a href="${resetLink}">${resetLink}</a>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.status(200).json("Đã gửi email hướng dẫn đặt lại mật khẩu!");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json("Lỗi gửi email: " + err.message);
+  }
+};
+
+// 4. ĐẶT LẠI MẬT KHẨU (Xử lý khi user click link)
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // B1: Tìm token trong DB
+    const [rows] = await db.query(
+      "SELECT * FROM PASSWORD_RESETS WHERE token = ?",
+      [token]
+    );
+    if (rows.length === 0)
+      return res.status(400).json("Token không hợp lệ hoặc đã hết hạn!");
+
+    const resetRequest = rows[0];
+
+    // B2: Kiểm tra thời gian (Sửa lỗi múi giờ bằng cách tính trên DB hoặc chấp nhận độ lệch nhỏ)
+    // Cách đơn giản nhất: So sánh thời gian hiện tại vs thời gian tạo + 15 phút
+    const now = new Date().getTime();
+    const created = new Date(resetRequest.created_at).getTime();
+    const diff = now - created;
+
+    // 15 phút = 15 * 60 * 1000 = 900000 ms
+    if (diff > 900000 || diff < 0) {
+      // diff < 0 là trường hợp giờ server bị lệch, cũng coi như lỗi cho an toàn
+      return res.status(400).json("Token đã hết hạn!");
+    }
+
+    // B3: Cập nhật mật khẩu mới
+    const hashed = bcrypt.hashSync(newPassword, 10);
+    await db.query(
+      "UPDATE NGUOI_DUNG SET mat_khau_ma_hoa = ? WHERE email = ?",
+      [hashed, resetRequest.email]
+    );
+
+    // B4: Xóa token đã dùng
+    await db.query("DELETE FROM PASSWORD_RESETS WHERE token = ?", [token]);
+
+    res.status(200).json("Đổi mật khẩu thành công! Hãy đăng nhập lại.");
+  } catch (err) {
+    res.status(500).json("Lỗi đặt lại mật khẩu: " + err.message);
+  }
 };

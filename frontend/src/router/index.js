@@ -6,8 +6,10 @@ import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import Profile from "../views/Profile.vue";
 import UserList from "../views/UserList.vue";
+import ForgotPassword from "../views/ForgotPassword.vue";
+import ResetPassword from "../views/ResetPassword.vue";
 
-// ĐỊNH NGHĨA CÁC ROUTE 
+// ĐỊNH NGHĨA CÁC ROUTE
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -31,22 +33,24 @@ const router = createRouter({
       name: "profile",
       component: Profile,
     },
-    // CÁC ROUTE CẦN BẢO VỆ (ADMIN) 
+    // CÁC ROUTE CẦN BẢO VỆ (ADMIN)
     {
       path: "/admin/users",
       name: "user-list",
       component: UserList,
-      meta: { requiresAdmin: true }, 
+      meta: { requiresAdmin: true },
     },
     {
       path: "/admin/products",
       component: ProductManager,
-      meta: { requiresAdmin: true }, 
+      meta: { requiresAdmin: true },
     },
+    { path: "/forgot-password", component: ForgotPassword },
+    { path: "/reset-password", component: ResetPassword },
   ],
 });
 
-// NGƯỜI GÁC CỔNG (Router Guard) 
+// NGƯỜI GÁC CỔNG (Router Guard)
 router.beforeEach((to, from, next) => {
   // 1. Lấy thông tin user từ localStorage
   const userStr = localStorage.getItem("user");

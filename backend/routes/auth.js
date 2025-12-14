@@ -4,6 +4,7 @@ const db = require("../db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
+const authController = require("../controllers/authController");
 
 const ACCESS_KEY = "access_secret_key_123";
 const REFRESH_KEY = "refresh_secret_key_789";
@@ -158,5 +159,8 @@ router.post("/logout", (req, res) => {
 
   res.status(200).json("Đăng xuất thành công!");
 });
+
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
 
 module.exports = router;
