@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { addToCart } from '../api/cart';
 
 const props = defineProps({
   product: { type: Object, required: true }
@@ -7,6 +8,7 @@ const props = defineProps({
 
 const DEFAULT_IMG = "https://via.placeholder.com/150?text=No+Image";
 const API_URL = "http://localhost:3000";
+const processing = ref(false);
 
 const imageUrl = computed(() => {
   if (!props.product.duong_dan_anh) return DEFAULT_IMG;
@@ -17,21 +19,31 @@ const imageUrl = computed(() => {
 const formattedPrice = computed(() => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(props.product.gia || 0);
 });
+
+// Hàm xử lý thêm vào giỏ
+const handleAddToCart = async () => {
+  if (!localStorage.getItem('accessToken')) {
+    alert("Vui lòng đăng nhập để mua hàng!");
+    return;
+  }
+
+  processing.value = true;
+  try {
+    await addToCart(props.product.ma_san_pham, 1);
+    alert("Đã thêm vào giỏ hàng!");
+  } catch (err) {
+    alert("Lỗi: " + (err.response?.data || err.message));
+  } finally {
+    processing.value = false;
+  }
+};
 </script>
 
 <template>
   <BCol cols="12" sm="6" md="4" lg="3" class="mb-4">
-    <BCard
-      no-body 
-      class="h-100 shadow-sm product-card"
-    >
+    <BCard no-body class="h-100 shadow-sm product-card">
       <div class="img-wrapper">
-        <BCardImg 
-          :src="imageUrl" 
-          alt="Image" 
-          top 
-          class="custom-img"
-        />
+        <BCardImg :src="imageUrl" alt="Image" top class="custom-img"/>
       </div>
 
       <BCardBody class="d-flex flex-column">
@@ -44,27 +56,32 @@ const formattedPrice = computed(() => {
           <small class="text-muted">Kho: {{ product.so_luong || 0 }}</small>
         </BCardText>
 
-        <BButton variant="primary" class="w-100 mt-auto">Thêm vào giỏ</BButton>
+        <BButton 
+          variant="primary" 
+          class="w-100 mt-auto" 
+          @click="handleAddToCart"
+          :disabled="processing || product.so_luong <= 0"
+        >
+          <span v-if="processing">Đang xử lý...</span>
+          <span v-else>{{ product.so_luong > 0 ? 'Thêm vào giỏ' : 'Hết hàng' }}</span>
+        </BButton>
       </BCardBody>
     </BCard>
   </BCol>
 </template>
 
 <style scoped>
-
-.img-wrapper {
+.img-wrapper { 
   height: 200px; 
-  overflow: hidden;
+  overflow: hidden; 
 }
-
-.custom-img {
-  width: 100%;
-  height: 100%;
+.custom-img { 
+  width: 100%; 
+  height: 100%; 
   object-fit: cover; 
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease; 
 }
-
-.product-card:hover .custom-img {
+.product-card:hover .custom-img { 
   transform: scale(1.05); 
-}
+  }
 </style>

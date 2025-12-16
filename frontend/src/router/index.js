@@ -1,21 +1,35 @@
 import { createRouter, createWebHistory } from "vue-router";
+import AdminLayout from "../components/AdminLayout.vue";
 
-import ProductManager from "../views/ProductManager.vue";
 import Home from "../views/Home.vue";
 import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import Profile from "../views/Profile.vue";
-import UserList from "../views/UserList.vue";
+import Cart from "../views/Cart.vue";
+
+import Dashboard from "../views/Admin/Dashboard.vue";
+import OrderManager from "../views/Admin/OrderManger.vue";
+import UserList from "../views/Admin/UserList.vue";
+import ProductManager from "../views/Admin/ProductManager.vue";
+import Menu from "../views/Menu.vue";
+import MyOrders from "../views/MyOrders.vue";
+
 import ForgotPassword from "../views/ForgotPassword.vue";
 import ResetPassword from "../views/ResetPassword.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // user routes
     {
       path: "/",
       name: "home",
-      component: Home,
+      component: Home, 
+    },
+    {
+      path: "/menu",
+      name: "menu",
+      component: Menu, 
     },
     {
       path: "/login",
@@ -32,20 +46,59 @@ const router = createRouter({
       name: "profile",
       component: Profile,
     },
+    {
+      path: "/cart",
+      name: "cart",
+      component: Cart,
+      meta: { requiresAuth: true } 
+    },
 
     {
-      path: "/admin/users",
-      name: "user-list",
-      component: UserList,
-      meta: { requiresAdmin: true },
+      path: "/my-orders",
+      name: "my-orders",
+      component: MyOrders,
+      meta: { requiresAuth: true } 
     },
-    {
-      path: "/admin/products",
-      component: ProductManager,
-      meta: { requiresAdmin: true },
-    },
+
     { path: "/forgot-password", component: ForgotPassword },
     { path: "/reset-password", component: ResetPassword },
+
+    //admin routes
+    {
+      path: "/admin",
+      component: AdminLayout, 
+      meta: { requiresAdmin: true },
+      children: [
+        {
+          path: "", 
+          redirect: "/admin/dashboard"
+        },
+        { 
+          path: "dashboard", 
+          name: "admin-dashboard", 
+          component: Dashboard,
+          meta: { title: "Tổng Quan" }
+        },
+        { 
+          path: "products", 
+          name: "admin-products", 
+          component: ProductManager,
+          meta: { title: "Quản Lý Thực Đơn" }
+        },
+        { 
+          path: "orders", 
+          name: "admin-orders", 
+          component: OrderManager,
+          meta: { title: "Quản Lý Đơn Hàng" }
+        },
+        { 
+          path: "users", 
+          name: "admin-users", 
+          component: UserList,
+          meta: { title: "Quản Lý Khách Hàng" }
+        },
+      ]
+    },
   ],
 });
 

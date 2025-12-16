@@ -5,7 +5,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-} from "../api/products";
+} from "../../api/products";
 
 const products = ref([]);
 const showModal = ref(false); 
@@ -121,8 +121,8 @@ const handleSubmit = async () => {
       alert("Thêm mới thành công!");
     }
     
-    showModal.value = false; // Đóng modal trước
-    fetchProducts(); // Load lại dữ liệu
+    showModal.value = false;
+    fetchProducts(); 
   } catch (err) {
     console.error(err);
     alert("Lỗi: " + (err.response?.data?.error || err.message));

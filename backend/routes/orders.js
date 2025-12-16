@@ -6,6 +6,7 @@ const roleMiddleware = require("../middlewares/roleMiddleware"); //
 
 router.use(authMiddleware);
 
+router.get("/stats", roleMiddleware("Admin"), orderController.getStats);
 // User xem đơn của mình
 router.get("/my", orderController.getMyOrders);
 

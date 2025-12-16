@@ -4,6 +4,7 @@ import router from "./router/index.js";
 //css
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue-next/dist/bootstrap-vue-next.css'
+import 'bootstrap-icons/font/bootstrap-icons.css'
 
 //plugins
 import { createBootstrap } from "bootstrap-vue-next";

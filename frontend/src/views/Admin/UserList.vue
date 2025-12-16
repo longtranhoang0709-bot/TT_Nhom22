@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from "vue";
-import userApi from "../api/user";
+import userApi from "../../api/user";
 
 const listUsers = ref([]);
 const error = ref("");
