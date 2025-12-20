@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const cartController = require("../controllers/cartController");
-const authMiddleware = require("../middlewares/authMiddleware"); //
+const authMiddleware = require("../middlewares/authMiddleware");
 
 // Tất cả các route giỏ hàng đều yêu cầu đăng nhập
 router.use(authMiddleware);

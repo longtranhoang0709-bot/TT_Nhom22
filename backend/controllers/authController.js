@@ -160,7 +160,7 @@ exports.forgotPassword = async (req, res) => {
       token,
     ]);
 
-    // B4: Cấu hình gửi mail (LƯU Ý: Nên để email/pass trong file .env)
+    // B4: Cấu hình gửi mail (với nodemailer)
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {

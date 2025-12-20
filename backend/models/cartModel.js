@@ -78,6 +78,67 @@ const CartModel = {
     );
   },
 
+  // 1. Tạo đơn hàng (Nhận conn từ controller để dùng Transaction)
+  createOrder: async (userId, orderData, conn) => {
+    const {
+      finalTotal,
+      discountAmount,
+      appliedCoupon,
+      address,
+      phone,
+      note,
+      method,
+    } = orderData;
+
+    // Sử dụng conn truyền vào (để rollback nếu lỗi), nếu không có thì dùng db mặc định
+    const connection = conn || db;
+
+    const [res] = await connection.query(
+      `INSERT INTO DON_HANG 
+      (ma_nguoi_dung, tong_tien, tien_giam_gia, ma_khuyen_mai_da_dung, dia_chi_giao, so_dien_thoai, ghi_chu, trang_thai, phuong_thuc_thanh_toan)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?)`,
+      [
+        userId,
+        finalTotal,
+        discountAmount,
+        appliedCoupon,
+        address,
+        phone,
+        note,
+        method,
+      ]
+    );
+    return res.insertId;
+  },
+
+  // 2. Thêm chi tiết đơn hàng (Bulk Insert)
+  addOrderDetails: async (orderId, items, conn) => {
+    const connection = conn || db;
+    // Chuyển mảng object thành mảng lồng nhau cho SQL
+    const orderItems = items.map((item) => [
+      orderId,
+      item.ma_san_pham,
+      item.so_luong,
+      item.gia,
+    ]);
+
+    await connection.query(
+      `INSERT INTO CHI_TIET_DON_HANG (ma_don_hang, ma_san_pham, so_luong, don_gia) VALUES ?`,
+      [orderItems]
+    );
+  },
+
+  // 3. Trừ tồn kho
+  updateProductStock: async (items, conn) => {
+    const connection = conn || db;
+    for (const item of items) {
+      await connection.query(
+        "UPDATE KHO SET so_luong = so_luong - ? WHERE ma_san_pham = ?",
+        [item.so_luong, item.ma_san_pham]
+      );
+    }
+  },
+
   // Xóa toàn bộ giỏ (sau khi checkout)
   clearCart: async (cartId) => {
     await db.query("DELETE FROM CHI_TIET_GIO_HANG WHERE ma_gio_hang = ?", [

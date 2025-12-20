@@ -2,13 +2,15 @@ const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
 const authMiddleware = require("../middlewares/authMiddleware");
-const roleMiddleware = require("../middlewares/roleMiddleware"); //
+const roleMiddleware = require("../middlewares/roleMiddleware");
 
 router.use(authMiddleware);
 
 router.get("/stats", roleMiddleware("Admin"), orderController.getStats);
 // User xem đơn của mình
 router.get("/my", orderController.getMyOrders);
+
+router.put("/:id/cancel", authMiddleware, orderController.cancelOrder);
 
 // User/Admin xem chi tiết
 router.get("/:id", orderController.getOrderDetail);
