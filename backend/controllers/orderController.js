@@ -1,3 +1,4 @@
+const db = require("../db");
 const OrderModel = require("../models/orderModel");
 
 // 1. Lấy danh sách đơn hàng của user đang đăng nhập
