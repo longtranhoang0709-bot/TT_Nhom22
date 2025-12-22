@@ -213,6 +213,21 @@ exports.checkout = async (req, res) => {
       qrUrl = "/backend/uploads/QRMoMo.jpg";
     }
 
+    if (method === "ChuyenKhoan") {
+      message = "Vui lòng quét mã QR để thanh toán!";
+
+      const BANK_ID = "TCB";
+      const ACCOUNT_NO = "19038209866011";
+      const ACCOUNT_NAME = "DO HOANG PHUOC";
+      const TEMPLATE = "compact2";
+
+      const DESCRIPTION = `DH${orderId}`;
+
+      qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${finalTotal}&addInfo=${DESCRIPTION}&accountName=${encodeURIComponent(
+        ACCOUNT_NAME
+      )}`;
+    }
+
     return res.status(200).json({
       message: message,
       orderId: orderId,
