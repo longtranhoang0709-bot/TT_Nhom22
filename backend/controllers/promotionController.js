@@ -36,8 +36,35 @@ exports.createPromotion = async (req, res) => {
     res.status(500).json("Lỗi tạo mã: " + err.message);
   }
 };
+// 3. Xóa mã giảm giá
+exports.deletePromotion = async (req, res) => {
+  try {
+    await PromotionModel.delete(req.params.id);
+    res.status(200).json("Đã xóa mã giảm giá!");
+  } catch (err) {
+    res.status(500).json("Lỗi xóa: " + err.message);
+  }
+};
 
-// 3. Kiểm tra mã giảm giá (Logic chính nằm ở đây)
+// Cập nhật mã
+exports.updatePromotion = async (req, res) => {
+  try {
+    const { code } = req.body;
+    await PromotionModel.update(req.params.id, {
+      code: req.body.code.toUpperCase(),
+      description: req.body.description || "",
+      discount: req.body.discount,
+      start: req.body.start,
+      end: req.body.end,
+      minOrder: req.body.minOrder || 0,
+    });
+    res.status(200).json("Cập nhật thành công!");
+  } catch (err) {
+    res.status(500).json("Lỗi cập nhật: " + err.message);
+  }
+};
+
+// Kiểm tra mã giảm giá (Logic chính nằm ở đây)
 exports.checkCoupon = async (req, res) => {
   try {
     const { code, totalOrderValue } = req.body;

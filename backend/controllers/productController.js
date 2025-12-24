@@ -46,18 +46,42 @@ exports.getProductById = async (req, res) => {
 
 // Tạo sản phẩm mới
 exports.createProduct = async (req, res) => {
+  const conn = await db.getConnection();
   try {
-    const newProductId = await ProductModel.createFull(req.body, req.files);
+    await conn.beginTransaction();
+    const { name, description, price, categoryId, ingredients } = req.body;
+    const imgUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    const [resProd] = await conn.query(
+      "INSERT INTO SAN_PHAM (ten_san_pham, mo_ta, gia, ma_danh_muc) VALUES (?, ?, ?, ?)",
+      [name, description, price, categoryId]
+    );
+    const productId = resProd.insertId;
+    if (imgUrl) {
+      await conn.query(
+        "INSERT INTO HINH_ANH_SAN_PHAM (ma_san_pham, duong_dan_anh, anh_chinh) VALUES (?, ?, 1)",
+        [productId, imgUrl]
+      );
+    }
+    // 3. Lưu Công Thức
+    if (ingredients && ingredients.length > 0) {
+      const ingList =
+        typeof ingredients === "string" ? JSON.parse(ingredients) : ingredients;
 
-    res.status(201).json({
-      message: "Tạo sản phẩm thành công!",
-      productId: newProductId,
-    });
+      for (const ing of ingList) {
+        await conn.query(
+          "INSERT INTO CONG_THUC (ma_san_pham, ma_nguyen_lieu, so_luong_can) VALUES (?, ?, ?)",
+          [productId, ing.id, ing.amount]
+        );
+      }
+    }
+
+    await conn.commit();
+    res.status(201).json("Thêm món và công thức thành công!");
   } catch (err) {
-    console.error(err);
-    res
-      .status(500)
-      .json({ error: "Lỗi khi tạo sản phẩm", detail: err.message });
+    await conn.rollback();
+    res.status(500).json("Lỗi: " + err.message);
+  } finally {
+    conn.release();
   }
 };
 

@@ -1,14 +1,37 @@
 const CartModel = require("../models/cartModel");
 const db = require("../db");
 
+const checkStockAvailability = async (productId, quantity) => {
+  // 1. Lấy công thức của món
+  const [recipe] = await db.query(
+    "SELECT * FROM CONG_THUC WHERE ma_san_pham = ?",
+    [productId]
+  );
+  if (recipe.length === 0) return true;
+  // 2. Duyệt từng nguyên liệu để check kho
+  for (const item of recipe) {
+    const [stockRes] = await db.query(
+      "SELECT so_luong FROM KHO WHERE ma_nguyen_lieu = ?",
+      [item.ma_nguyen_lieu]
+    );
+
+    const currentStock = stockRes.length > 0 ? stockRes[0].so_luong : 0;
+    const required = item.so_luong_can * quantity;
+
+    if (currentStock < required) {
+      return false;
+    }
+  }
+  return true;
+};
+
 // Lấy giỏ hàng
 exports.getCart = async (req, res) => {
   try {
-    const userId = req.user.id; // Lấy từ middleware auth
+    const userId = req.user.id;
     const cartId = await CartModel.findOrCreateCart(userId);
     const items = await CartModel.getCartDetails(cartId);
 
-    // Tính tổng tiền
     const total = items.reduce(
       (sum, item) => sum + item.gia * item.so_luong,
       0
@@ -27,29 +50,23 @@ exports.addToCart = async (req, res) => {
     const { productId, quantity } = req.body;
     const userId = req.user.id;
 
-    // Phải là số nguyên và lớn hơn 0
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      return res
-        .status(400)
-        .json("Số lượng sản phẩm phải là số nguyên dương (1, 2, 3...)!");
+      return res.status(400).json("Số lượng sản phẩm phải là số nguyên dương!");
     }
 
     // 1. Kiểm tra tồn kho
-    const [stock] = await db.query(
-      "SELECT so_luong FROM KHO WHERE ma_san_pham = ?",
-      [productId]
-    );
-    if (stock.length === 0 || stock[0].so_luong < quantity) {
+    const isAvailable = await checkStockAvailability(productId, quantity);
+    if (!isAvailable) {
       return res
         .status(400)
-        .json("Sản phẩm đã hết hàng hoặc không đủ số lượng!");
+        .json("Sản phẩm tạm hết hàng hoặc không đủ nguyên liệu!");
     }
 
     // 2. Thêm vào giỏ
     const cartId = await CartModel.findOrCreateCart(userId);
-    await CartModel.addItem(cartId, productId, quantity || 1);
+    await CartModel.addItem(cartId, productId, quantity);
 
-    // 3. --- Tính lại tổng tiền để trả về cho Frontend ---
+    // 3. Tính lại tổng tiền
     const items = await CartModel.getCartDetails(cartId);
     const totalAmount = items.reduce(
       (sum, item) => sum + item.gia * item.so_luong,
@@ -58,7 +75,7 @@ exports.addToCart = async (req, res) => {
 
     res.status(200).json({
       message: "Đã thêm vào giỏ hàng!",
-      totalAmount: totalAmount, // Trả về tổng tiền mới nhất
+      totalAmount: totalAmount,
       cartId: cartId,
     });
   } catch (err) {
@@ -74,15 +91,20 @@ exports.updateCartItem = async (req, res) => {
     const userId = req.user.id;
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json("Số lượng không hợp lệ!");
+    }
+
+    // Kiểm tra tồn kho trước khi update
+    const isAvailable = await checkStockAvailability(productId, quantity);
+    if (!isAvailable) {
       return res
         .status(400)
-        .json("Số lượng không hợp lệ! Vui lòng chọn số lớn hơn 0.");
+        .json("Số lượng yêu cầu vượt quá nguyên liệu tồn kho!");
     }
 
     const cartId = await CartModel.findOrCreateCart(userId);
     await CartModel.updateItemQty(cartId, productId, quantity);
 
-    // --- Tính lại tổng ---
     const items = await CartModel.getCartDetails(cartId);
     const totalAmount = items.reduce(
       (sum, item) => sum + item.gia * item.so_luong,
@@ -104,7 +126,6 @@ exports.removeCartItem = async (req, res) => {
     const cartId = await CartModel.findOrCreateCart(userId);
     await CartModel.removeItem(cartId, id);
 
-    // --- Tính lại tổng ---
     const items = await CartModel.getCartDetails(cartId);
     const totalAmount = items.reduce(
       (sum, item) => sum + item.gia * item.so_luong,
@@ -117,12 +138,11 @@ exports.removeCartItem = async (req, res) => {
   }
 };
 
-// Checkout giỏ hàng
+// Checkout
 exports.checkout = async (req, res) => {
   const userId = req.user.id;
   const { address, phone, note, paymentMethod, couponCode } = req.body;
 
-  // 1. Validation (Bắt buộc nhập thông tin giao hàng)
   if (!address || !phone) {
     return res
       .status(400)
@@ -131,9 +151,8 @@ exports.checkout = async (req, res) => {
 
   const conn = await db.getConnection();
   try {
-    await conn.beginTransaction(); // Bắt đầu giao dịch
+    await conn.beginTransaction();
 
-    // 2. Lấy dữ liệu giỏ hàng
     const cartId = await CartModel.findOrCreateCart(userId);
     const items = await CartModel.getCartDetails(cartId);
 
@@ -142,7 +161,6 @@ exports.checkout = async (req, res) => {
       return res.status(400).json("Giỏ hàng trống!");
     }
 
-    // 3. Tính toán tiền nong & Mã giảm giá
     const rawTotal = items.reduce(
       (sum, item) => sum + item.gia * item.so_luong,
       0
@@ -152,17 +170,13 @@ exports.checkout = async (req, res) => {
     let appliedCoupon = null;
 
     if (couponCode) {
-      // Kiểm tra mã giảm giá
       const [coupons] = await conn.query(
         "SELECT * FROM KHUYEN_MAI WHERE ma_code = ?",
         [couponCode]
       );
-
       if (coupons.length > 0) {
         const coupon = coupons[0];
         const now = new Date();
-
-        // Check ngày hết hạn & hạn mức tối thiểu
         if (
           now >= new Date(coupon.ngay_bat_dau) &&
           now <= new Date(coupon.ngay_ket_thuc) &&
@@ -175,10 +189,7 @@ exports.checkout = async (req, res) => {
       }
     }
 
-    // 4. GỌI MODEL ĐỂ XỬ LÝ DATABASE
     const method = paymentMethod || "COD";
-
-    // Tạo object dữ liệu đơn hàng để gửi sang Model
     const orderData = {
       finalTotal,
       discountAmount,
@@ -189,25 +200,16 @@ exports.checkout = async (req, res) => {
       method,
     };
 
-    // Tạo đơn hàng (Trả về Order ID)
     const orderId = await CartModel.createOrder(userId, orderData, conn);
-
-    // Lưu chi tiết đơn hàng
     await CartModel.addOrderDetails(orderId, items, conn);
 
-    // Trừ tồn kho
     await CartModel.updateProductStock(items, conn);
 
-    // Xóa giỏ hàng
     await CartModel.clearCart(cartId, conn);
-
-    // Hoàn tất giao dịch
     await conn.commit();
 
-    // TRẢ VỀ KẾT QUẢ CHO FRONTEND
     let message = "Đặt hàng thành công! Vui lòng chuẩn bị tiền mặt.";
     let qrUrl = null;
-
     if (method === "Momo") {
       message = "Vui lòng quét mã Momo để thanh toán!";
       qrUrl = "/backend/uploads/QRMoMo.jpg";
@@ -231,16 +233,16 @@ exports.checkout = async (req, res) => {
     return res.status(200).json({
       message: message,
       orderId: orderId,
-      originalPrice: rawTotal, // Giá gốc
-      discount: discountAmount, // Tiền giảm
-      totalAmount: finalTotal, // Khách phải trả
-      qrCodeUrl: qrUrl, // Link QR
+      originalPrice: rawTotal,
+      discount: discountAmount,
+      totalAmount: finalTotal,
+      qrCodeUrl: qrUrl,
     });
   } catch (err) {
-    await conn.rollback(); // Gặp lỗi thì quay lui
+    await conn.rollback();
     console.error(err);
     res.status(500).json("Lỗi thanh toán: " + err.message);
   } finally {
-    conn.release(); // Trả kết nối về bể chứa
+    conn.release();
   }
 };

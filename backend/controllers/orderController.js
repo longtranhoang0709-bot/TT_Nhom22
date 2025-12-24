@@ -57,47 +57,35 @@ exports.updateOrderStatus = async (req, res) => {
 // 5. Lấy thống kê cho dashboard admin
 exports.getStats = async (req, res) => {
   try {
-    const db = require("../db");
-
-    // Tính TỔNG doanh thu (Chỉ tính đơn đã hoàn thành)
-    const [revenueRes] = await db.query(`
-            SELECT SUM(tong_tien) as revenue 
-            FROM DON_HANG 
-            WHERE trang_thai = 'Completed' 
-        `);
-
-    // Đếm đơn hàng đang chờ xử lý
-    const [pendingRes] = await db.query(`
-            SELECT COUNT(*) as count FROM DON_HANG WHERE trang_thai = 'Pending'
-        `);
-
-    // Đếm TỔNG số đơn đã hoàn thành
-    const [completedRes] = await db.query(`
-            SELECT COUNT(*) as count FROM DON_HANG WHERE trang_thai = 'Completed'
-        `);
-
-    //lấy danh sách sản phẩm sắp hết (dưới 5 cái)
+    const [revenueRes] = await db.query(
+      `SELECT SUM(tong_tien) as revenue FROM DON_HANG WHERE trang_thai = 'Completed'`
+    );
+    const [pendingRes] = await db.query(
+      `SELECT COUNT(*) as count FROM DON_HANG WHERE trang_thai = 'Pending'`
+    );
+    const [completedRes] = await db.query(
+      `SELECT COUNT(*) as count FROM DON_HANG WHERE trang_thai = 'Completed'`
+    );
     const [lowStockItems] = await db.query(`
-            SELECT SP.ten_san_pham, K.so_luong
+            SELECT NL.ten_nguyen_lieu as ten_san_pham, K.so_luong
             FROM KHO K
-            JOIN SAN_PHAM SP ON K.ma_san_pham = SP.ma_san_pham
-            WHERE K.so_luong < 5
+            JOIN NGUYEN_LIEU NL ON K.ma_nguyen_lieu = NL.ma_nguyen_lieu
+            WHERE K.so_luong < K.dinh_muc_toi_thieu
         `);
 
-    //lấy 5 đơn hàng mới nhất
     const [recentOrders] = await db.query(`
             SELECT DH.*, ND.ho_ten 
             FROM DON_HANG DH
             JOIN NGUOI_DUNG ND ON DH.ma_nguoi_dung = ND.ma_nguoi_dung
             ORDER BY DH.ngay_tao DESC LIMIT 5
         `);
+
     res.status(200).json({
       revenueToday: revenueRes[0].revenue || 0,
       pendingOrders: pendingRes[0].count || 0,
       completedToday: completedRes[0].count || 0,
       lowStock: lowStockItems.length,
       lowStockList: lowStockItems,
-
       recentOrders,
     });
   } catch (err) {
@@ -115,7 +103,7 @@ exports.cancelOrder = async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Kiểm tra đơn hàng có phải của user này không VÀ trạng thái là gì
+    // 1. Kiểm tra đơn hàng
     const [orders] = await conn.query(
       "SELECT * FROM DON_HANG WHERE ma_don_hang = ? AND ma_nguoi_dung = ?",
       [orderId, userId]
@@ -127,22 +115,18 @@ exports.cancelOrder = async (req, res) => {
     }
 
     const order = orders[0];
-
-    // --- RÀNG BUỘC QUAN TRỌNG ---
     if (order.trang_thai !== "Pending") {
       await conn.rollback();
-      return res
-        .status(400)
-        .json("Không thể hủy đơn hàng đã được xác nhận hoặc đang giao!");
+      return res.status(400).json("Không thể hủy đơn hàng đã được xác nhận!");
     }
 
-    // 2. Cập nhật trạng thái thành Cancelled
+    // 2. Cập nhật trạng thái
     await conn.query(
       "UPDATE DON_HANG SET trang_thai = 'Cancelled' WHERE ma_don_hang = ?",
       [orderId]
     );
 
-    // 3. Hoàn lại số lượng tồn kho
+    // 3. Hoàn lại số lượng tồn kho NGUYÊN LIỆU
     // Lấy danh sách sản phẩm trong đơn
     const [items] = await conn.query(
       "SELECT * FROM CHI_TIET_DON_HANG WHERE ma_don_hang = ?",
@@ -150,16 +134,27 @@ exports.cancelOrder = async (req, res) => {
     );
 
     for (const item of items) {
-      await conn.query(
-        "UPDATE KHO SET so_luong = so_luong + ? WHERE ma_san_pham = ?",
-        [item.so_luong, item.ma_san_pham]
+      // Với mỗi sản phẩm, tìm công thức của nó
+      const [recipes] = await conn.query(
+        "SELECT ma_nguyen_lieu, so_luong_can FROM CONG_THUC WHERE ma_san_pham = ?",
+        [item.ma_san_pham]
       );
+
+      // Cộng lại nguyên liệu vào kho
+      for (const recipe of recipes) {
+        const totalRestock = recipe.so_luong_can * item.so_luong; // Định lượng * số ly
+        await conn.query(
+          "UPDATE KHO SET so_luong = so_luong + ? WHERE ma_nguyen_lieu = ?",
+          [totalRestock, recipe.ma_nguyen_lieu]
+        );
+      }
     }
 
     await conn.commit();
     res.status(200).json("Đã hủy đơn hàng thành công!");
   } catch (err) {
     await conn.rollback();
+    console.error(err);
     res.status(500).json("Lỗi server");
   } finally {
     conn.release();

@@ -28,6 +28,18 @@ const Promotion = {
     );
     return result;
   },
+  // 4. Cập nhật mã
+  update: async (id, data) => {
+    const { code, description, discount, start, end, minOrder } = data;
+    await db.query(
+      "UPDATE KHUYEN_MAI SET ma_code=?, mo_ta=?, giam_phan_tram=?, ngay_bat_dau=?, ngay_ket_thuc=?, don_toi_thieu=? WHERE ma_khuyen_mai=?",
+      [code, description, discount, start, end, minOrder, id]
+    );
+  },
+  // 5. Xóa mã
+  delete: async (id) => {
+    await db.query("DELETE FROM KHUYEN_MAI WHERE ma_khuyen_mai = ?", [id]);
+  },
 };
 
 module.exports = Promotion;

@@ -1,3 +1,4 @@
+// backend/models/cartModel.js
 const db = require("../db");
 
 const CartModel = {
@@ -16,15 +17,13 @@ const CartModel = {
     }
     return rows[0].ma_gio_hang;
   },
-
-  // Lấy chi tiết giỏ hàng (kèm thông tin sản phẩm)
+  // Lấy chi tiết giỏ hàng
   getCartDetails: async (cartId) => {
     const sql = `
-      SELECT CT.*, SP.ten_san_pham, SP.gia, HA.duong_dan_anh, KHO.so_luong as ton_kho
+      SELECT CT.*, SP.ten_san_pham, SP.gia, HA.duong_dan_anh
       FROM CHI_TIET_GIO_HANG CT
       JOIN SAN_PHAM SP ON CT.ma_san_pham = SP.ma_san_pham
       LEFT JOIN HINH_ANH_SAN_PHAM HA ON SP.ma_san_pham = HA.ma_san_pham AND HA.anh_chinh = 1
-      LEFT JOIN KHO ON SP.ma_san_pham = KHO.ma_san_pham
       WHERE CT.ma_gio_hang = ?
     `;
     const [rows] = await db.query(sql, [cartId]);
@@ -33,21 +32,18 @@ const CartModel = {
 
   // Thêm sản phẩm vào giỏ
   addItem: async (cartId, productId, quantity) => {
-    // 1. Kiểm tra sản phẩm đã có trong giỏ chưa
     const [exists] = await db.query(
       "SELECT * FROM CHI_TIET_GIO_HANG WHERE ma_gio_hang = ? AND ma_san_pham = ?",
       [cartId, productId]
     );
 
     if (exists.length > 0) {
-      // Nếu có rồi -> Tăng số lượng
       const newQty = exists[0].so_luong + quantity;
       await db.query(
         "UPDATE CHI_TIET_GIO_HANG SET so_luong = ? WHERE ma_chi_tiet = ?",
         [newQty, exists[0].ma_chi_tiet]
       );
     } else {
-      // Chưa có -> Thêm mới
       await db.query(
         "INSERT INTO CHI_TIET_GIO_HANG (ma_gio_hang, ma_san_pham, so_luong) VALUES (?, ?, ?)",
         [cartId, productId, quantity]
@@ -58,7 +54,6 @@ const CartModel = {
   // Cập nhật số lượng
   updateItemQty: async (cartId, productId, quantity) => {
     if (quantity <= 0) {
-      // Nếu số lượng <= 0 thì xóa luôn
       return await db.query(
         "DELETE FROM CHI_TIET_GIO_HANG WHERE ma_gio_hang = ? AND ma_san_pham = ?",
         [cartId, productId]
@@ -78,7 +73,7 @@ const CartModel = {
     );
   },
 
-  // 1. Tạo đơn hàng (Nhận conn từ controller để dùng Transaction)
+  // Tạo đơn hàng
   createOrder: async (userId, orderData, conn) => {
     const {
       finalTotal,
@@ -89,8 +84,6 @@ const CartModel = {
       note,
       method,
     } = orderData;
-
-    // Sử dụng conn truyền vào (để rollback nếu lỗi), nếu không có thì dùng db mặc định
     const connection = conn || db;
 
     const [res] = await connection.query(
@@ -111,10 +104,9 @@ const CartModel = {
     return res.insertId;
   },
 
-  // 2. Thêm chi tiết đơn hàng (Bulk Insert)
+  // Thêm chi tiết đơn hàng
   addOrderDetails: async (orderId, items, conn) => {
     const connection = conn || db;
-    // Chuyển mảng object thành mảng lồng nhau cho SQL
     const orderItems = items.map((item) => [
       orderId,
       item.ma_san_pham,
@@ -128,22 +120,36 @@ const CartModel = {
     );
   },
 
-  // 3. Trừ tồn kho
+  // Trừ tồn kho
   updateProductStock: async (items, conn) => {
     const connection = conn || db;
     for (const item of items) {
-      await connection.query(
-        "UPDATE KHO SET so_luong = so_luong - ? WHERE ma_san_pham = ?",
-        [item.so_luong, item.ma_san_pham]
+      // 1. Lấy công thức của món
+      const [recipe] = await connection.query(
+        "SELECT * FROM CONG_THUC WHERE ma_san_pham = ?",
+        [item.ma_san_pham]
       );
+
+      // 2. Trừ từng nguyên liệu
+      if (recipe.length > 0) {
+        for (const ing of recipe) {
+          const amountNeeded = ing.so_luong_can * item.so_luong;
+          await connection.query(
+            "UPDATE KHO SET so_luong = so_luong - ? WHERE ma_nguyen_lieu = ?",
+            [amountNeeded, ing.ma_nguyen_lieu]
+          );
+        }
+      }
     }
   },
 
-  // Xóa toàn bộ giỏ (sau khi checkout)
-  clearCart: async (cartId) => {
-    await db.query("DELETE FROM CHI_TIET_GIO_HANG WHERE ma_gio_hang = ?", [
-      cartId,
-    ]);
+  // Xóa giỏ hàng
+  clearCart: async (cartId, conn) => {
+    const connection = conn || db;
+    await connection.query(
+      "DELETE FROM CHI_TIET_GIO_HANG WHERE ma_gio_hang = ?",
+      [cartId]
+    );
   },
 };
 

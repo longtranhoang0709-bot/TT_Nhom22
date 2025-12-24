@@ -21,5 +21,19 @@ router.post(
   roleMiddleware("Admin"),
   promotionController.createPromotion
 );
+// Xóa mã
+router.delete(
+  "/:id",
+  verifyToken,
+  roleMiddleware("Admin"),
+  promotionController.deletePromotion
+);
 
+// Sửa mã
+router.put(
+  "/:id",
+  verifyToken,
+  roleMiddleware("Admin"),
+  promotionController.updatePromotion
+);
 module.exports = router;
