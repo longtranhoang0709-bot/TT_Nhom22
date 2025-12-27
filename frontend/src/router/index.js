@@ -11,8 +11,14 @@ import Dashboard from "../views/Admin/Dashboard.vue";
 import OrderManager from "../views/Admin/OrderManger.vue";
 import UserList from "../views/Admin/UserList.vue";
 import ProductManager from "../views/Admin/ProductManager.vue";
+import BannerManager from "../views/Admin/BannerManager.vue";
+import PromotionManager from "../views/Admin/PromotionManager.vue";
 import Menu from "../views/Menu.vue";
 import MyOrders from "../views/MyOrders.vue";
+import Reviews from "../views/Reviews.vue";
+import Contact from "../views/Contact.vue";
+import ContactManager from "../views/Admin/ContactManager.vue";
+import InventoryManager from "../views/Admin/InventoryManager.vue";
 
 import ForgotPassword from "../views/ForgotPassword.vue";
 import ResetPassword from "../views/ResetPassword.vue";
@@ -24,12 +30,12 @@ const router = createRouter({
     {
       path: "/",
       name: "home",
-      component: Home, 
+      component: Home,
     },
     {
       path: "/menu",
       name: "menu",
-      component: Menu, 
+      component: Menu,
     },
     {
       path: "/login",
@@ -50,14 +56,24 @@ const router = createRouter({
       path: "/cart",
       name: "cart",
       component: Cart,
-      meta: { requiresAuth: true } 
+      meta: { requiresAuth: true },
     },
 
     {
       path: "/my-orders",
       name: "my-orders",
       component: MyOrders,
-      meta: { requiresAuth: true } 
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/reviews",
+      name: "reviews",
+      component: Reviews,
+    },
+    {
+      path: "/contact",
+      name: "contact",
+      component: Contact,
     },
 
     { path: "/forgot-password", component: ForgotPassword },
@@ -66,38 +82,68 @@ const router = createRouter({
     //admin routes
     {
       path: "/admin",
-      component: AdminLayout, 
+      component: AdminLayout,
       meta: { requiresAdmin: true },
       children: [
         {
-          path: "", 
-          redirect: "/admin/dashboard"
+          path: "",
+          redirect: "/admin/dashboard",
         },
-        { 
-          path: "dashboard", 
-          name: "admin-dashboard", 
+        {
+          path: "dashboard",
+          name: "admin-dashboard",
           component: Dashboard,
-          meta: { title: "Tổng Quan" }
+          meta: { title: "Tổng Quan" },
         },
-        { 
-          path: "products", 
-          name: "admin-products", 
+        {
+          path: "products",
+          name: "admin-products",
           component: ProductManager,
-          meta: { title: "Quản Lý Thực Đơn" }
+          meta: { title: "Quản Lý Thực Đơn" },
         },
-        { 
-          path: "orders", 
-          name: "admin-orders", 
+        {
+          path: "orders",
+          name: "admin-orders",
           component: OrderManager,
-          meta: { title: "Quản Lý Đơn Hàng" }
+          meta: { title: "Quản Lý Đơn Hàng" },
         },
-        { 
-          path: "users", 
-          name: "admin-users", 
+        {
+          path: "users",
+          name: "admin-users",
           component: UserList,
-          meta: { title: "Quản Lý Khách Hàng" }
+          meta: { title: "Quản Lý Khách Hàng" },
         },
-      ]
+        {
+          path: "banners",
+          name: "admin-banners",
+          component: BannerManager,
+          meta: { title: "Quản Lý Banner" },
+        },
+        {
+          path: "promotions",
+          name: "admin-promotions",
+          component: PromotionManager,
+          meta: { title: "Quản Lý Mã Giảm Giá" },
+        },
+        {
+          path: "promotions",
+          name: "admin-promotions",
+          component: PromotionManager,
+          meta: { title: "Quản Lý Mã Giảm Giá" },
+        },
+        {
+          path: "contact",
+          name: "admin-contact",
+          component: ContactManager,
+          meta: { title: "Quản Lý Liên Hệ" },
+        },
+        {
+          path: "inventory",
+          name: "admin-inventory",
+          component: InventoryManager,
+          meta: { title: "Quản Lý Kho Hàng" },
+        },
+      ],
     },
   ],
 });

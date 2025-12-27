@@ -24,3 +24,7 @@ export const updateOrderStatus = (id, status) => {
 export const getOrderStats = () => {
   return api.get("/orders/stats");
 };
+// 6. Hủy đơn hàng (Người dùng)
+export const cancelOrder = (id) => {
+  return api.put(`/orders/${id}/cancel`);
+};

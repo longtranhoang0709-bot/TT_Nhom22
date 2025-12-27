@@ -1,8 +1,7 @@
 const db = require("../db");
 
 const ProductModel = {
-  
-  // 1. Lấy tất cả sản phẩm 
+  // 1. Lấy tất cả sản phẩm
   getAll: async (limit, offset, categoryId, keyword, viewAll = false) => {
     let sql = `
             SELECT SP.*, HA.duong_dan_anh 
@@ -32,7 +31,7 @@ const ProductModel = {
     return rows;
   },
 
-  // 2. Đếm tổng 
+  // 2. Đếm tổng
   countTotal: async (categoryId, keyword, viewAll = false) => {
     let sql = "SELECT COUNT(*) as total FROM SAN_PHAM WHERE 1=1";
     const params = [];
@@ -51,7 +50,7 @@ const ProductModel = {
     return rows[0].total;
   },
 
-  // 3. Lấy chi tiết 
+  // 3. Lấy chi tiết
   getById: async (id) => {
     const [product] = await db.query(
       `
@@ -68,8 +67,18 @@ const ProductModel = {
       "SELECT * FROM HINH_ANH_SAN_PHAM WHERE ma_san_pham = ?",
       [id]
     );
-
-    return { ...product[0], images };
+    const [recipe] = await db.query(
+      `SELECT 
+          CT.ma_nguyen_lieu as id, 
+          CT.so_luong_can as amount,  
+          NL.ten_nguyen_lieu, 
+          NL.don_vi_tinh
+       FROM CONG_THUC CT
+       JOIN NGUYEN_LIEU NL ON CT.ma_nguyen_lieu = NL.ma_nguyen_lieu
+       WHERE CT.ma_san_pham = ?`,
+      [id]
+    );
+    return { ...product[0], images, recipe };
   },
 
   // 4. Tạo sản phẩm mới
@@ -107,12 +116,11 @@ const ProductModel = {
     }
   },
 
-  // 5. Cập nhật 
-  update: async (id, data, files) => {
+  // 5. Cập nhật
+  update: async (id, data, files, ingredients) => {
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
-
       const fields = [];
       const values = [];
 
@@ -127,7 +135,7 @@ const ProductModel = {
         await conn.query(`UPDATE SAN_PHAM SET ${fields.join(", ")} WHERE ma_san_pham = ?`, values);
       }
 
-      // Cập nhật ảnh
+      // B. Update Ảnh 
       if (files && files.length > 0) {
         await conn.query("DELETE FROM HINH_ANH_SAN_PHAM WHERE ma_san_pham = ?", [id]);
         const imgValues = files.map((file, idx) => [
@@ -140,6 +148,22 @@ const ProductModel = {
           [imgValues]
         );
       }
+
+      // C. Update Công Thức 
+      if (ingredients) {
+        // 1. Xóa công thức cũ
+        await conn.query("DELETE FROM CONG_THUC WHERE ma_san_pham = ?", [id]);
+        // 2. Thêm công thức mới 
+        if (ingredients.length > 0) {
+            for (const ing of ingredients) {
+                await conn.query(
+                    "INSERT INTO CONG_THUC (ma_san_pham, ma_nguyen_lieu, so_luong_can) VALUES (?, ?, ?)",
+                    [id, ing.id, ing.amount]
+                );
+            }
+        }
+      }
+
       await conn.commit();
       return true;
     } catch (err) {
@@ -150,13 +174,18 @@ const ProductModel = {
     }
   },
 
-  // 6. Xóa 
+  // 6. Xóa
   delete: async (id) => {
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
-      await conn.query("DELETE FROM HINH_ANH_SAN_PHAM WHERE ma_san_pham = ?", [id]);
-      await conn.query("DELETE FROM SAN_PHAM_KHUYEN_MAI WHERE ma_san_pham = ?", [id]);
+      await conn.query("DELETE FROM HINH_ANH_SAN_PHAM WHERE ma_san_pham = ?", [
+        id,
+      ]);
+      await conn.query(
+        "DELETE FROM SAN_PHAM_KHUYEN_MAI WHERE ma_san_pham = ?",
+        [id]
+      );
       await conn.query("DELETE FROM CONG_THUC WHERE ma_san_pham = ?", [id]); // Xóa thêm công thức
       await conn.query("DELETE FROM SAN_PHAM WHERE ma_san_pham = ?", [id]);
 

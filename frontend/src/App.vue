@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import Footer from "./components/Footer.vue";
 
 // Quản lý trạng thái
 const router = useRouter();
@@ -54,7 +55,7 @@ checkLogin();
 </script>
 
 <template>
-  <div id="app">
+  <div id="app" class="d-flex flex-column min-vh-100">
     <BNavbar toggleable="lg" class="custom-navbar" sticky="top">
       <BContainer class="d-flex align-items-center h-100 position-relative">
         <BNavbarBrand
@@ -75,7 +76,7 @@ checkLogin();
           >
             <BNavItem to="/" active-class="active">Trang Chủ</BNavItem>
             <BNavItem to="/menu" active-class="active">Thực Đơn</BNavItem>
-            <BNavItem href="#">Liên Hệ</BNavItem>
+            <BNavItem to="/contact">Liên Hệ</BNavItem>
           </BNavbarNav>
 
           <BNavbarNav class="ms-auto align-items-center gap-3 right-nav-items">
@@ -121,9 +122,9 @@ checkLogin();
                 </div>
               </template>
               <BDropdownHeader>Chào, {{ currentUser.ho_ten }}</BDropdownHeader>
-              
+
               <BDropdownItem to="/profile">Hồ sơ cá nhân</BDropdownItem>
-              
+
               <BDropdownItem to="/my-orders">Đơn mua</BDropdownItem>
               <template v-if="currentUser.roles?.includes('Admin')">
                 <BDropdownDivider />
@@ -162,19 +163,27 @@ checkLogin();
         </BContainer>
       </div>
     </transition>
-    <router-view />
+    <div class="flex-grow-1">
+      <router-view />
+    </div>
+
+    <Footer v-if="!route.path.startsWith('/admin')" />
   </div>
 </template>
 
 <style>
-
 body {
   margin: 0;
   padding: 0;
   background-color: #fffbf2;
   font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
-
+.min-vh-100 {
+  min-height: 100vh;
+}
+.flex-grow-1 {
+  flex-grow: 1;
+}
 .custom-navbar {
   background-color: #5d4037 !important;
   height: 65px;

@@ -24,7 +24,7 @@ exports.getInventory = async (req, res) => {
   }
 };
 
-// 2. Nhập kho (SỬA: Update theo ma_nguyen_lieu)
+// 2. Nhập kho 
 exports.restock = async (req, res) => {
     try {
         const { id } = req.params; 

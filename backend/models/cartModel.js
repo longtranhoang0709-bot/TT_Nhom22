@@ -123,21 +123,22 @@ const CartModel = {
   // Trừ tồn kho
   updateProductStock: async (items, conn) => {
     const connection = conn || db;
+    
+    // Duyệt qua từng món trong đơn hàng 
     for (const item of items) {
-      // 1. Lấy công thức của món
+      // Lấy công thức của món đó
       const [recipe] = await connection.query(
-        "SELECT * FROM CONG_THUC WHERE ma_san_pham = ?",
+        "SELECT * FROM CONG_THUC WHERE ma_san_pham = ?", 
         [item.ma_san_pham]
       );
-
-      // 2. Trừ từng nguyên liệu
+      // Nếu có công thức, trừ nguyên liệu tương ứng
       if (recipe.length > 0) {
         for (const ing of recipe) {
-          const amountNeeded = ing.so_luong_can * item.so_luong;
-          await connection.query(
-            "UPDATE KHO SET so_luong = so_luong - ? WHERE ma_nguyen_lieu = ?",
-            [amountNeeded, ing.ma_nguyen_lieu]
-          );
+            const totalNeeded = ing.so_luong_can * item.so_luong;
+            await connection.query(
+                "UPDATE KHO SET so_luong = so_luong - ? WHERE ma_nguyen_lieu = ?",
+                [totalNeeded, ing.ma_nguyen_lieu]
+            );
         }
       }
     }

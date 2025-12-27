@@ -11,12 +11,15 @@ const handleLogout = () => {
   router.push("/login");
 };
 
-
 const menuItems = [
   { name: 'Tổng Quan', path: '/admin/dashboard', icon: 'bi-grid-fill' },
   { name: 'Quản Lý Thực Đơn', path: '/admin/products', icon: 'bi-cup-hot-fill' },
-  { name: 'Khách Hàng', path: '/admin/users', icon: 'bi-people-fill' },
+  { name: 'Kho Hàng', path: '/admin/inventory', icon: 'bi-box-seam-fill' },
   { name: 'Đơn Hàng', path: '/admin/orders', icon: 'bi-bag-check-fill' },
+  { name: 'Khách Hàng', path: '/admin/users', icon: 'bi-people-fill' },
+  { name: 'Liên Hệ Khách Hàng', path: '/admin/contact', icon: 'bi-envelope-paper-fill' },
+  { name: 'Quản Lý Banner', path: '/admin/banners', icon: 'bi-images' },
+  { name: 'Mã Giảm Giá', path: '/admin/promotions', icon: 'bi-tags-fill' },
 ];
 
 const currentRouteName = computed(() => route.name);
@@ -76,7 +79,6 @@ const currentRouteName = computed(() => route.name);
 </template>
 
 <style scoped>
-
 :root {
   --coffee-dark: #4E342E;
   --coffee-light: #5D4037;
@@ -90,7 +92,7 @@ const currentRouteName = computed(() => route.name);
   background-color: #F5F7FA;
 }
 
-/* Sidebar Styling */
+
 .sidebar {
   width: 260px;
   background-color: #4E342E; 
@@ -164,7 +166,6 @@ const currentRouteName = computed(() => route.name);
   background: #FF5252;
 }
 
-/* Main Content Styling */
 .main-content {
   margin-left: 260px;
   flex-grow: 1;

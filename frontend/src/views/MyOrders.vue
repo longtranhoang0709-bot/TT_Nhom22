@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getMyOrders, getOrderDetail } from '../api/order';
+import { getMyOrders, getOrderDetail, cancelOrder } from '../api/order';
+
 
 const orders = ref([]);
 const loading = ref(true);
@@ -39,7 +40,18 @@ const viewDetail = async (orderId) => {
     alert("Lỗi tải chi tiết đơn hàng: " + (err.response?.data || err.message));
   }
 };
+// Hủy đơn hàng
+const handleCancel = async (orderId) => {
+  if(!confirm("Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này sẽ hoàn lại kho.")) return;
 
+  try {
+    await cancelOrder(orderId);
+    alert("Đã hủy đơn hàng thành công!");
+    fetchMyOrders(); 
+  } catch (err) {
+    alert("Lỗi hủy đơn: " + (err.response?.data || err.message));
+  }
+};
 onMounted(fetchMyOrders);
 </script>
 
@@ -65,8 +77,7 @@ onMounted(fetchMyOrders);
             <th>Địa chỉ</th>
             <th>Tổng tiền</th>
             <th>Trạng thái</th>
-            <th>Chi tiết</th>
-          </tr>
+            <th>Hành động</th> </tr>
         </thead>
         <tbody>
           <tr v-for="order in orders" :key="order.ma_don_hang">
@@ -75,14 +86,26 @@ onMounted(fetchMyOrders);
             <td class="text-truncate" style="max-width: 200px;">{{ order.dia_chi_giao }}</td>
             <td class="fw-bold text-danger">{{ formatPrice(order.tong_tien) }}</td>
             <td>
-              <BBadge :variant="order.trang_thai === 'Pending' ? 'warning' : 'success'">
+              <BBadge :variant="order.trang_thai === 'Pending' ? 'warning' : 
+                               (order.trang_thai === 'Cancelled' ? 'danger' : 'success')">
                 {{ order.trang_thai }}
               </BBadge>
             </td>
             <td>
-              <BButton size="sm" variant="outline-primary" @click="viewDetail(order.ma_don_hang)">
-                Xem
-              </BButton>
+              <div class="d-flex gap-2">
+                <BButton size="sm" variant="outline-primary" @click="viewDetail(order.ma_don_hang)">
+                  Xem
+                </BButton>
+                
+                <BButton 
+                  v-if="order.trang_thai === 'Pending'"
+                  size="sm" 
+                  variant="outline-danger" 
+                  @click="handleCancel(order.ma_don_hang)"
+                >
+                  Hủy
+                </BButton>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -91,8 +114,15 @@ onMounted(fetchMyOrders);
 
     <BModal v-model="showModal" title="Chi tiết đơn hàng" size="lg" hide-footer>
       <div v-if="selectedOrder">
-        <p><strong>Mã đơn:</strong> #{{ selectedOrder.ma_don_hang }}</p>
-        <p><strong>Người nhận:</strong> {{ selectedOrder.so_dien_thoai }}</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+             <div>
+                <p class="mb-1"><strong>Mã đơn:</strong> #{{ selectedOrder.ma_don_hang }}</p>
+                <p class="mb-1"><strong>Người nhận:</strong> {{ selectedOrder.so_dien_thoai }}</p>
+             </div>
+             <BBadge :variant="selectedOrder.trang_thai === 'Pending' ? 'warning' : 'success'" class="fs-6">
+                {{ selectedOrder.trang_thai }}
+             </BBadge>
+        </div>
         <p><strong>Ghi chú:</strong> {{ selectedOrder.ghi_chu || 'Không có' }}</p>
         
         <BTableSimple bordered class="mt-3">

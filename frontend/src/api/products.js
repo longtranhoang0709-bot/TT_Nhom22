@@ -23,3 +23,5 @@ export const updateProduct = (id, formData) => {
 export const deleteProduct = (id) => {
   return api.delete(`/products/${id}`);
 };
+// Lấy chi tiết sản phẩm
+export const getProductById = (id) => api.get(`/products/${id}`);
