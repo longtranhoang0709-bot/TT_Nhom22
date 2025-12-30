@@ -1,4 +1,5 @@
 const ProductModel = require("../models/productModel");
+const db = require("../db");
 
 // Lấy danh sách sản phẩm với phân trang và lọc
 exports.getAllProducts = async (req, res) => {
@@ -49,11 +50,11 @@ exports.createProduct = async (req, res) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { name, description, price, categoryId, ingredients } = req.body;
+    const { ten_san_pham, mo_ta, gia, ma_danh_muc, ingredients } = req.body;
     const imgUrl = req.file ? `/uploads/${req.file.filename}` : "";
     const [resProd] = await conn.query(
       "INSERT INTO SAN_PHAM (ten_san_pham, mo_ta, gia, ma_danh_muc) VALUES (?, ?, ?, ?)",
-      [name, description, price, categoryId]
+      [ten_san_pham, mo_ta, gia, ma_danh_muc]
     );
     const productId = resProd.insertId;
     if (imgUrl) {
@@ -88,7 +89,17 @@ exports.createProduct = async (req, res) => {
 // Cập nhật sản phẩm
 exports.updateProduct = async (req, res) => {
   try {
-    await ProductModel.update(req.params.id, req.body, req.files);
+    const { ingredients } = req.body;
+    
+    let recipe = null;
+    if (ingredients) {
+        try {
+            recipe = typeof ingredients === 'string' ? JSON.parse(ingredients) : ingredients;
+        } catch (e) {
+            recipe = [];
+        }
+    }
+    await ProductModel.update(req.params.id, req.body, req.files, recipe);
 
     res.status(200).json("Cập nhật thành công!");
   } catch (err) {

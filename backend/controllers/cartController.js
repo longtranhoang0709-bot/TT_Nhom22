@@ -1,83 +1,57 @@
 const CartModel = require("../models/cartModel");
 const db = require("../db");
+// Kiểm tra tồn kho nguyên liệu cho sản phẩm
+const checkStockAvailability = async (productId, quantityNeeded) => {
+    const [recipe] = await db.query("SELECT * FROM CONG_THUC WHERE ma_san_pham = ?", [productId]);
+    if (recipe.length === 0) return true; 
 
-const checkStockAvailability = async (productId, quantity) => {
-  // 1. Lấy công thức của món
-  const [recipe] = await db.query(
-    "SELECT * FROM CONG_THUC WHERE ma_san_pham = ?",
-    [productId]
-  );
-  if (recipe.length === 0) return true;
-  // 2. Duyệt từng nguyên liệu để check kho
-  for (const item of recipe) {
-    const [stockRes] = await db.query(
-      "SELECT so_luong FROM KHO WHERE ma_nguyen_lieu = ?",
-      [item.ma_nguyen_lieu]
-    );
+    for (const item of recipe) {
+        const [stockRes] = await db.query(
+            "SELECT so_luong FROM KHO WHERE ma_nguyen_lieu = ?", 
+            [item.ma_nguyen_lieu]
+        );
+        const currentStock = stockRes.length > 0 ? parseFloat(stockRes[0].so_luong) : 0;
+        const required = parseFloat(item.so_luong_can) * quantityNeeded;
 
-    const currentStock = stockRes.length > 0 ? stockRes[0].so_luong : 0;
-    const required = item.so_luong_can * quantity;
-
-    if (currentStock < required) {
-      return false;
+        if (currentStock < required) return false;
     }
-  }
-  return true;
+    return true;
 };
-
 // Lấy giỏ hàng
 exports.getCart = async (req, res) => {
   try {
     const userId = req.user.id;
     const cartId = await CartModel.findOrCreateCart(userId);
     const items = await CartModel.getCartDetails(cartId);
-
-    const total = items.reduce(
-      (sum, item) => sum + item.gia * item.so_luong,
-      0
-    );
-
+    const total = items.reduce((sum, item) => sum + item.gia * item.so_luong, 0);
     res.status(200).json({ cartId, items, total });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Lỗi Server" });
   }
 };
 
-// Thêm vào giỏ
 exports.addToCart = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
     const userId = req.user.id;
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      return res.status(400).json("Số lượng sản phẩm phải là số nguyên dương!");
+      return res.status(400).json("Số lượng phải là số nguyên dương!");
     }
 
-    // 1. Kiểm tra tồn kho
+    // 1. Kiểm tra tồn kho 
     const isAvailable = await checkStockAvailability(productId, quantity);
     if (!isAvailable) {
-      return res
-        .status(400)
-        .json("Sản phẩm tạm hết hàng hoặc không đủ nguyên liệu!");
+        return res.status(400).json("Món này tạm hết nguyên liệu!");
     }
-
     // 2. Thêm vào giỏ
     const cartId = await CartModel.findOrCreateCart(userId);
     await CartModel.addItem(cartId, productId, quantity);
 
-    // 3. Tính lại tổng tiền
     const items = await CartModel.getCartDetails(cartId);
-    const totalAmount = items.reduce(
-      (sum, item) => sum + item.gia * item.so_luong,
-      0
-    );
+    const totalAmount = items.reduce((sum, item) => sum + item.gia * item.so_luong, 0);
 
-    res.status(200).json({
-      message: "Đã thêm vào giỏ hàng!",
-      totalAmount: totalAmount,
-      cartId: cartId,
-    });
+    res.status(200).json({ message: "Đã thêm vào giỏ!", totalAmount, cartId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Lỗi Server" });

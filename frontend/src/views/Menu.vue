@@ -13,24 +13,21 @@ const currentCategory = ref(null);
 const currentPage = ref(1);
 const totalPages = ref(1);
 const limit = 12;
-const processingMap = ref({}); 
+const processingMap = ref({});
 
 const API_URL = "http://localhost:3000";
 
-// Hàm format giá tiền
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     price
   );
 
-// Hàm xử lý đường dẫn ảnh
 const getImageUrl = (path) => {
   if (!path) return "https://via.placeholder.com/300x200?text=No+Image";
   if (path.startsWith("http")) return path;
   return `${API_URL}${path}`;
 };
 
-// Hàm gọi API lấy sản phẩm
 const fetchProducts = async () => {
   loading.value = true;
   try {
@@ -59,7 +56,6 @@ const fetchProducts = async () => {
   }
 };
 
-
 const handleAddToCart = async (product) => {
   if (!localStorage.getItem("accessToken")) {
     if (confirm("Vui lòng đăng nhập để mua hàng!")) {
@@ -68,7 +64,6 @@ const handleAddToCart = async (product) => {
     return;
   }
 
-  // 2. Xử lý thêm vào giỏ
   processingMap.value[product.ma_san_pham] = true;
 
   try {
@@ -76,7 +71,7 @@ const handleAddToCart = async (product) => {
     alert(`Đã thêm "${product.ten_san_pham}" vào giỏ hàng!`);
   } catch (err) {
     console.error(err);
-    alert("Lỗi: " + (err.response?.data || err.message));
+    alert("Không thể thêm: " + (err.response?.data || err.message));
   } finally {
     processingMap.value[product.ma_san_pham] = false;
   }
@@ -101,7 +96,6 @@ watch(
     fetchProducts();
   }
 );
-
 onMounted(() => {
   fetchProducts();
 });
@@ -171,9 +165,7 @@ onMounted(() => {
                       variant="primary"
                       class="rounded-circle shadow-sm btn-quick-add"
                       @click="handleAddToCart(p)"
-                      :disabled="
-                        processingMap[p.ma_san_pham] || p.so_luong <= 0
-                      "
+                      :disabled="processingMap[p.ma_san_pham]"
                     >
                       <i class="bi bi-plus-lg"></i>
                     </BButton>
@@ -204,16 +196,12 @@ onMounted(() => {
                       variant="primary"
                       class="rounded-pill px-3 fw-bold"
                       @click="handleAddToCart(p)"
-                      :disabled="
-                        processingMap[p.ma_san_pham] || p.so_luong <= 0
-                      "
+                      :disabled="processingMap[p.ma_san_pham]"
                     >
                       <span v-if="processingMap[p.ma_san_pham]">
                         <BSpinner small />
                       </span>
-                      <span v-else>
-                        {{ p.so_luong > 0 ? "Đặt mua" : "Hết hàng" }}
-                      </span>
+                      <span v-else>Đặt mua</span>
                     </BButton>
                   </div>
                 </BCardBody>
@@ -221,9 +209,9 @@ onMounted(() => {
             </BCol>
 
             <BCol cols="12" v-if="products.length === 0">
-              <BAlert show variant="warning" class="text-center">
-                Không tìm thấy sản phẩm nào.
-              </BAlert>
+              <BAlert show variant="warning" class="text-center"
+                >Không tìm thấy sản phẩm nào.</BAlert
+              >
             </BCol>
           </BRow>
 
@@ -253,8 +241,6 @@ onMounted(() => {
 .text-coffee {
   color: #4e342e;
 }
-
-
 .menu-banner {
   background-image: url("@/assets/image2.png");
   background-size: cover;
@@ -277,8 +263,6 @@ onMounted(() => {
   letter-spacing: 2px;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
-
-
 .product-card-menu {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border-radius: 15px;
@@ -303,8 +287,6 @@ onMounted(() => {
 .product-card-menu:hover .img-container-menu img {
   transform: scale(1.05);
 }
-
-
 .clamp-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -312,8 +294,6 @@ onMounted(() => {
   overflow: hidden;
   margin-bottom: 10px;
 }
-
-/* Nút bấm */
 .btn-primary {
   background-color: #d4a574;
   border-color: #d4a574;
@@ -329,8 +309,6 @@ onMounted(() => {
   border-color: #e0e0e0;
   color: #999;
 }
-
-
 .add-to-cart-overlay {
   position: absolute;
   bottom: 10px;
