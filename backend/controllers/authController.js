@@ -16,32 +16,31 @@ exports.register = async (req, res) => {
     return res.status(400).json("Vui lòng nhập đủ thông tin!");
 
   try {
-    const [check] = await db
-      .promise()
-      .query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [email]);
+    const [check] = await db.query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [
+      email,
+    ]);
 
     if (check.length > 0) return res.status(409).json("Email đã tồn tại!");
 
     const hashed = bcrypt.hashSync(password, 10);
     const userId = uuidv4();
 
-    await db.promise().query(
+    await db.query(
       `INSERT INTO NGUOI_DUNG 
           (ma_nguoi_dung, ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi)
           VALUES (?, ?, ?, ?, ?, ?)`,
       [userId, ho_ten, email, so_dien_thoai, hashed, dia_chi]
     );
 
-    await db
-      .promise()
-      .query(
-        "INSERT INTO NGUOI_DUNG_VAI_TRO (ma_nguoi_dung, ma_vai_tro) VALUES (?, ?)",
-        [userId, 1]
-      );
+    // Mặc định vai trò là 1 (Người dùng)
+    await db.query(
+      "INSERT INTO NGUOI_DUNG_VAI_TRO (ma_nguoi_dung, ma_vai_tro) VALUES (?, ?)",
+      [userId, 1]
+    );
 
     res.status(200).json("Đăng ký thành công!");
   } catch (err) {
-    return res.status(500).json({ error: "Lỗi Server", details: err });
+    return res.status(500).json({ error: "Lỗi Server", details: err.message });
   }
 };
 
@@ -53,7 +52,7 @@ exports.login = async (req, res) => {
     return res.status(400).json("Thiếu email hoặc mật khẩu!");
 
   try {
-    const [rows] = await db.promise().query(
+    const [rows] = await db.query(
       `SELECT NGUOI_DUNG.*, VAI_TRO.ten_vai_tro
           FROM NGUOI_DUNG
           JOIN NGUOI_DUNG_VAI_TRO ON NGUOI_DUNG.ma_nguoi_dung = NGUOI_DUNG_VAI_TRO.ma_nguoi_dung
@@ -70,10 +69,13 @@ exports.login = async (req, res) => {
     const checkPass = bcrypt.compareSync(password, user.mat_khau_ma_hoa);
     if (!checkPass) return res.status(400).json("Sai mật khẩu!");
 
+    // Chuyển role đơn lẻ thành mảng để Middleware .some() hoạt động được
+    const userRoles = [user.ten_vai_tro];
+
     const accessToken = jwt.sign(
       {
         id: user.ma_nguoi_dung,
-        role: user.ten_vai_tro,
+        roles: userRoles, // Dùng 'roles' (mảng)
       },
       ACCESS_KEY,
       { expiresIn: "20m" }
@@ -82,7 +84,7 @@ exports.login = async (req, res) => {
     const refreshToken = jwt.sign(
       {
         id: user.ma_nguoi_dung,
-        role: user.ten_vai_tro,
+        roles: userRoles, // Dùng 'roles' (mảng)
       },
       REFRESH_KEY,
       { expiresIn: "7d" }
@@ -90,7 +92,7 @@ exports.login = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: false, // Để true nếu dùng HTTPS
       sameSite: "strict",
     });
 
@@ -101,15 +103,15 @@ exports.login = async (req, res) => {
         id: user.ma_nguoi_dung,
         ho_ten: user.ho_ten,
         email: user.email,
-        role: user.ten_vai_tro,
+        roles: userRoles,
       },
     });
   } catch (err) {
-    return res.status(500).json({ error: "Lỗi login", details: err });
+    return res.status(500).json({ error: "Lỗi login", details: err.message });
   }
 };
 
-//  REFRESH TOKEN (Cấp lại access token mới)
+// REFRESH TOKEN
 exports.refresh = async (req, res) => {
   const token = req.cookies.refreshToken;
 
@@ -118,8 +120,9 @@ exports.refresh = async (req, res) => {
   jwt.verify(token, REFRESH_KEY, (err, user) => {
     if (err) return res.status(403).json("Refresh token không hợp lệ!");
 
+    // Đồng bộ dùng 'roles'
     const newAccessToken = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, roles: user.roles },
       ACCESS_KEY,
       { expiresIn: "20m" }
     );
