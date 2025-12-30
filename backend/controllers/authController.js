@@ -18,10 +18,10 @@ exports.register = async (req, res) => {
   }
 
   try {
-    // Kiểm tra email tồn tại
-    const [exist] = await db
-      .promise()
-      .query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [email]);
+    // Kiểm tra email tồn tại - ĐÃ XÓA .promise()
+    const [exist] = await db.query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [
+      email,
+    ]);
     if (exist.length > 0) return res.status(409).json("Email đã tồn tại!");
 
     // Mã hóa mật khẩu
@@ -29,8 +29,8 @@ exports.register = async (req, res) => {
     const hashedPassword = bcrypt.hashSync(password, salt);
     const userId = uuidv4();
 
-    // Lưu User
-    await db.promise().query(
+    // Lưu User - ĐÃ XÓA .promise()
+    await db.query(
       `INSERT INTO NGUOI_DUNG (ma_nguoi_dung, ho_ten, email, so_dien_thoai, mat_khau_ma_hoa, dia_chi)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
@@ -43,13 +43,11 @@ exports.register = async (req, res) => {
       ]
     );
 
-    // Gán quyền mặc định (Customer = 1)
-    await db
-      .promise()
-      .query(
-        "INSERT INTO NGUOI_DUNG_VAI_TRO (ma_nguoi_dung, ma_vai_tro) VALUES (?, ?)",
-        [userId, 1]
-      );
+    // Gán quyền mặc định (Customer = 1) - ĐÃ XÓA .promise()
+    await db.query(
+      "INSERT INTO NGUOI_DUNG_VAI_TRO (ma_nguoi_dung, ma_vai_tro) VALUES (?, ?)",
+      [userId, 1]
+    );
 
     res.status(201).json("Đăng ký thành công!");
   } catch (err) {
@@ -68,10 +66,10 @@ exports.login = async (req, res) => {
     return res.status(400).json("Vui lòng nhập email và mật khẩu!");
 
   try {
-    // Tìm user
-    const [rows] = await db
-      .promise()
-      .query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [email]);
+    // Tìm user - ĐÃ XÓA .promise()
+    const [rows] = await db.query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [
+      email,
+    ]);
     if (rows.length === 0)
       return res.status(404).json("Tài khoản không tồn tại!");
 
@@ -81,8 +79,8 @@ exports.login = async (req, res) => {
     const match = bcrypt.compareSync(password, user.mat_khau_ma_hoa);
     if (!match) return res.status(400).json("Sai mật khẩu!");
 
-    // Lấy danh sách vai trò
-    const [roles] = await db.promise().query(
+    // Lấy danh sách vai trò - ĐÃ XÓA .promise()
+    const [roles] = await db.query(
       `SELECT V.ten_vai_tro 
        FROM NGUOI_DUNG_VAI_TRO NVT
        JOIN VAI_TRO V ON NVT.ma_vai_tro = V.ma_vai_tro
@@ -129,7 +127,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// 3. REFRESH TOKEN
+// 3. REFRESH TOKEN (Giữ nguyên vì không dùng db trực tiếp ở đây)
 exports.refresh = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken)
@@ -149,7 +147,7 @@ exports.refresh = async (req, res) => {
   });
 };
 
-// 4. LOGOUT
+// 4. LOGOUT (Giữ nguyên)
 exports.logout = async (req, res) => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
@@ -163,23 +161,20 @@ exports.logout = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const [users] = await db
-      .promise()
-      .query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [email]);
+    // ĐÃ XÓA .promise()
+    const [users] = await db.query("SELECT * FROM NGUOI_DUNG WHERE email = ?", [
+      email,
+    ]);
     if (users.length === 0) return res.status(404).json("Email không tồn tại!");
 
     const token = crypto.randomBytes(32).toString("hex");
 
-    // Xóa token cũ -> Lưu token mới
-    await db
-      .promise()
-      .query("DELETE FROM PASSWORD_RESETS WHERE email = ?", [email]);
-    await db
-      .promise()
-      .query("INSERT INTO PASSWORD_RESETS (email, token) VALUES (?, ?)", [
-        email,
-        token,
-      ]);
+    // Xóa token cũ -> Lưu token mới - ĐÃ XÓA .promise()
+    await db.query("DELETE FROM PASSWORD_RESETS WHERE email = ?", [email]);
+    await db.query("INSERT INTO PASSWORD_RESETS (email, token) VALUES (?, ?)", [
+      email,
+      token,
+    ]);
 
     // Cấu hình gửi mail
     const transporter = nodemailer.createTransport({
@@ -211,27 +206,25 @@ exports.resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
-    const [rows] = await db
-      .promise()
-      .query("SELECT * FROM PASSWORD_RESETS WHERE token = ?", [token]);
+    // ĐÃ XÓA .promise()
+    const [rows] = await db.query(
+      "SELECT * FROM PASSWORD_RESETS WHERE token = ?",
+      [token]
+    );
     if (rows.length === 0)
       return res.status(400).json("Token không hợp lệ hoặc hết hạn!");
 
     // Hash pass mới
     const hashed = bcrypt.hashSync(newPassword, 10);
 
-    // Cập nhật User
-    await db
-      .promise()
-      .query("UPDATE NGUOI_DUNG SET mat_khau_ma_hoa = ? WHERE email = ?", [
-        hashed,
-        rows[0].email,
-      ]);
+    // Cập nhật User - ĐÃ XÓA .promise()
+    await db.query(
+      "UPDATE NGUOI_DUNG SET mat_khau_ma_hoa = ? WHERE email = ?",
+      [hashed, rows[0].email]
+    );
 
-    // Xóa token
-    await db
-      .promise()
-      .query("DELETE FROM PASSWORD_RESETS WHERE token = ?", [token]);
+    // Xóa token - ĐÃ XÓA .promise()
+    await db.query("DELETE FROM PASSWORD_RESETS WHERE token = ?", [token]);
 
     res.status(200).json("Đổi mật khẩu thành công!");
   } catch (err) {
