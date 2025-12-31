@@ -1,6 +1,6 @@
 const UserModel = require("../models/userModel");
 const db = require("../db");
-const { v4: uuidv4 } = require("uuid"); 
+const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcryptjs");
 
 // Lấy danh sách users
@@ -43,7 +43,7 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ error: "Email đã tồn tại" });
     }
 
-    const userId = uuidv4(); 
+    const userId = uuidv4();
     await UserModel.create(conn, {
       ma_nguoi_dung: userId,
       ho_ten,
@@ -69,11 +69,22 @@ exports.createUser = async (req, res) => {
 // Cập nhật user
 exports.updateUser = async (req, res) => {
   try {
-    await UserModel.update(req.params.id, req.body); // Lấy lại thông tin mới nhất để trả về
-    const updatedUser = await UserModel.findById(req.params.id);
-    const { mat_khau_ma_hoa, ...info } = updatedUser;
-    res.status(200).json(info);
+    const userId = req.params.id;
+    const { ho_ten, so_dien_thoai, dia_chi, password, role } = req.body;
+    // Cập nhật thông tin cơ bản
+    await UserModel.updateInfo(userId, { ho_ten, so_dien_thoai, dia_chi });
+    // Cập nhật mật khẩu
+    if (password && password.trim() !== "") {
+      const hashed = bcrypt.hashSync(password, 10);
+      await UserModel.updatePassword(userId, hashed);
+    }
+    // Cập nhật vai trò
+    if (role) {
+      await UserModel.updateRole(userId, role);
+    }
+    res.status(200).json("Cập nhật thành công!");
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Lỗi Server" });
   }
 };
@@ -85,5 +96,29 @@ exports.deleteUser = async (req, res) => {
     res.status(200).json({ message: "Đã xóa thành công" });
   } catch (err) {
     res.status(500).json({ error: "Lỗi Server" });
+  }
+};
+//khách hàng đổi mật khẩu
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id; // Lấy từ token
+    const { oldPassword, newPassword } = req.body;
+
+    // Tìm user để lấy mật khẩu cũ
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json("Không tìm thấy user");
+
+    // So khớp mật khẩu cũ
+    const isMatch = bcrypt.compareSync(oldPassword, user.mat_khau_ma_hoa);
+    if (!isMatch) return res.status(400).json("Mật khẩu cũ không đúng!");
+
+    // Hash mật khẩu mới và lưu
+    const hashed = bcrypt.hashSync(newPassword, 10);
+    await UserModel.updatePassword(userId, hashed);
+
+    res.status(200).json("Đổi mật khẩu thành công!");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json("Lỗi đổi mật khẩu");
   }
 };

@@ -29,12 +29,14 @@ exports.getOrderDetail = async (req, res) => {
   try {
     const order = await OrderModel.getDetail(req.params.id);
     if (!order) return res.status(404).json("Không tìm thấy đơn hàng");
+    //-------------------------------
+    const userRoles = req.user.roles || [];
+    const isAdmin = userRoles.includes("Admin");
 
     // Kiểm tra quyền: Chỉ chủ đơn hàng hoặc Admin mới được xem
-    if (req.user.role !== "Admin" && order.ma_nguoi_dung !== req.user.id) {
+    if (!isAdmin && order.ma_nguoi_dung !== req.user.id) {
       return res.status(403).json("Không có quyền truy cập đơn hàng này");
     }
-
     res.status(200).json(order);
   } catch (err) {
     console.error(err);
@@ -156,6 +158,67 @@ exports.cancelOrder = async (req, res) => {
     await conn.rollback();
     console.error(err);
     res.status(500).json("Lỗi server");
+  } finally {
+    conn.release();
+  }
+};
+// Admin hủy đơn
+exports.adminCancelOrder = async (req, res) => {
+  const orderId = req.params.id;
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. Lấy thông tin đơn
+    const [orders] = await conn.query(
+      "SELECT * FROM DON_HANG WHERE ma_don_hang = ?",
+      [orderId]
+    );
+    if (orders.length === 0) {
+      await conn.rollback();
+      return res.status(404).json("Không tìm thấy đơn hàng!");
+    }
+    const order = orders[0];
+
+    // Chỉ cho phép hủy nếu chưa Hoàn thành hoặc chưa Hủy trước đó
+    if (order.trang_thai === "Completed" || order.trang_thai === "Cancelled") {
+      await conn.rollback();
+      return res
+        .status(400)
+        .json("Không thể hủy đơn đã hoàn thành hoặc đã hủy!");
+    }
+
+    // 2. Cập nhật trạng thái sang Cancelled
+    await conn.query(
+      "UPDATE DON_HANG SET trang_thai = 'Cancelled' WHERE ma_don_hang = ?",
+      [orderId]
+    );
+
+    // 3. Hoàn nguyên liệu vào kho
+    const [items] = await conn.query(
+      "SELECT * FROM CHI_TIET_DON_HANG WHERE ma_don_hang = ?",
+      [orderId]
+    );
+
+    for (const item of items) {
+      const [recipes] = await conn.query(
+        "SELECT ma_nguyen_lieu, so_luong_can FROM CONG_THUC WHERE ma_san_pham = ?",
+        [item.ma_san_pham]
+      );
+      for (const recipe of recipes) {
+        const totalRestock = recipe.so_luong_can * item.so_luong;
+        await conn.query(
+          "UPDATE KHO SET so_luong = so_luong + ? WHERE ma_nguyen_lieu = ?",
+          [totalRestock, recipe.ma_nguyen_lieu]
+        );
+      }
+    }
+
+    await conn.commit();
+    res.status(200).json("Admin đã hủy đơn và hoàn kho thành công!");
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json("Lỗi server: " + err.message);
   } finally {
     conn.release();
   }

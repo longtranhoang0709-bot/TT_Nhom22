@@ -24,5 +24,11 @@ router.put(
   roleMiddleware("Admin"),
   orderController.updateOrderStatus
 );
+// Admin hủy đơn hàng
+router.put(
+  "/:id/admin-cancel",
+  roleMiddleware("Admin"),
+  orderController.adminCancelOrder
+);
 
 module.exports = router;
