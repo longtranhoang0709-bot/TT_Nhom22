@@ -25,4 +25,9 @@ export default {
   create(data) {
     return api.post("/users", data); 
   },
+  // 6. Đổi mật khẩu (Người dùng)
+  changePassword(data) {
+    // data = { oldPassword, newPassword }
+    return api.post("/users/change-password", data);
+  }
 };

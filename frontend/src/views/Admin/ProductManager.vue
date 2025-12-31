@@ -57,7 +57,7 @@ const openAddModal = () => {
   showModal.value = true;
 };
 
-const openEditModal = async(p) => {
+const openEditModal = async (p) => {
   try {
     const res = await getProductById(p.ma_san_pham);
     const productDetail = res.data;
@@ -67,10 +67,12 @@ const openEditModal = async(p) => {
       mo_ta: productDetail.mo_ta,
       ma_danh_muc: productDetail.ma_danh_muc,
       trang_thai: productDetail.trang_thai,
-      recipe: productDetail.recipe ? productDetail.recipe.map(r => ({
-        id: r.id,
-        amount: r.amount
-      })) : [], 
+      recipe: productDetail.recipe
+        ? productDetail.recipe.map((r) => ({
+            id: r.id,
+            amount: r.amount,
+          }))
+        : [],
     };
     currentId.value = p.ma_san_pham;
     showModal.value = true;

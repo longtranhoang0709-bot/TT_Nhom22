@@ -328,10 +328,10 @@ onMounted(fetchCart);
       no-close-on-backdrop
     >
       <div class="text-center p-2">
-        <h5 class="mb-3 fw-bold">
+        <!-- <h5 class="mb-3 fw-bold">
           Tổng tiền:
           <span class="text-danger">{{ formatPrice(finalTotal) }}</span>
-        </h5>
+        </h5> -->
         <p class="small text-muted mb-4">
           Vui lòng sử dụng ứng dụng Ngân hàng hoặc Momo để quét mã bên dưới.
         </p>

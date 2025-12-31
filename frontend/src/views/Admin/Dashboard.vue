@@ -1,25 +1,24 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '../../api/axios';
+import { ref, onMounted } from "vue";
+import api from "../../api/axios";
 
 const stats = ref({
   revenueToday: 0,
   pendingOrders: 0,
   completedToday: 0,
   lowStock: 0,
-  lowStockList: [] 
+  lowStockList: [],
 });
 const recentOrders = ref([]);
 const loading = ref(false);
-const showLowStockModal = ref(false); 
+const showLowStockModal = ref(false);
 
 const fetchDashboardData = async () => {
   loading.value = true;
   try {
-    const res = await api.get('/orders/stats');
+    const res = await api.get("/orders/stats");
     stats.value = res.data;
     recentOrders.value = res.data.recentOrders;
-    
   } catch (err) {
     console.error("Lỗi tải dashboard:", err);
   } finally {
@@ -29,7 +28,10 @@ const fetchDashboardData = async () => {
 
 onMounted(fetchDashboardData);
 
-const formatMoney = (money) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(money || 0);
+const formatMoney = (money) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+    money || 0
+  );
 </script>
 
 <template>
@@ -44,7 +46,9 @@ const formatMoney = (money) => new Intl.NumberFormat('vi-VN', { style: 'currency
           <div class="d-flex justify-content-between">
             <div>
               <h6 class="text-muted">Tổng Doanh Thu</h6>
-              <h3 class="fw-bold text-success">{{ formatMoney(stats.revenueToday) }}</h3>
+              <h3 class="fw-bold text-success">
+                {{ formatMoney(stats.revenueToday) }}
+              </h3>
             </div>
             <div class="icon-box bg-success-subtle text-success">
               <i class="bi bi-currency-dollar"></i>
@@ -82,12 +86,17 @@ const formatMoney = (money) => new Intl.NumberFormat('vi-VN', { style: 'currency
       </BCol>
 
       <BCol md="3" @click="showLowStockModal = true" style="cursor: pointer">
-        <BCard no-body class="stat-card shadow-sm h-100 border-0 p-3 low-stock-card">
+        <BCard
+          no-body
+          class="stat-card shadow-sm h-100 border-0 p-3 low-stock-card"
+        >
           <div class="d-flex justify-content-between">
             <div>
               <h6 class="text-muted">Hàng Sắp Hết</h6>
               <h3 class="fw-bold text-danger">{{ stats.lowStock }}</h3>
-              <small class="text-danger fst-italic" v-if="stats.lowStock > 0">(Nhấn để xem)</small>
+              <small class="text-danger fst-italic" v-if="stats.lowStock > 0"
+                >(Nhấn để xem)</small
+              >
             </div>
             <div class="icon-box bg-danger-subtle text-danger">
               <i class="bi bi-exclamation-triangle"></i>
@@ -114,7 +123,11 @@ const formatMoney = (money) => new Intl.NumberFormat('vi-VN', { style: 'currency
             <td>{{ order.ho_ten }}</td>
             <td class="fw-bold">{{ formatMoney(order.tong_tien) }}</td>
             <td>
-              <BBadge :variant="order.trang_thai === 'Pending' ? 'warning' : 'success'">
+              <BBadge
+                :variant="
+                  order.trang_thai === 'Pending' ? 'warning' : 'success'
+                "
+              >
                 {{ order.trang_thai }}
               </BBadge>
             </td>
@@ -124,46 +137,64 @@ const formatMoney = (money) => new Intl.NumberFormat('vi-VN', { style: 'currency
       </BTableSimple>
     </BCard>
 
-    <BModal v-model="showLowStockModal" title="Sản phẩm sắp hết hàng (Kho < 5)" hide-footer>
-        <div v-if="stats.lowStockList && stats.lowStockList.length > 0">
-            <BTableSimple hover bordered>
-                <thead class="table-light">
-                    <tr>
-                        <th>Tên sản phẩm</th>
-                        <th class="text-center">Tồn kho</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in stats.lowStockList" :key="index">
-                        <td>{{ item.ten_san_pham }}</td>
-                        <td class="text-center fw-bold text-danger">{{ item.so_luong }}</td>
-                    </tr>
-                </tbody>
-            </BTableSimple>
-        </div>
-        <div v-else class="text-center text-success py-3">
-            <i class="bi bi-check-circle fs-1"></i>
-            <p class="mt-2">Kho hàng đang ổn định, không có sản phẩm nào sắp hết.</p>
-        </div>
+    <BModal
+      v-model="showLowStockModal"
+      title="Sản phẩm sắp hết hàng (Kho < 5)"
+      hide-footer
+    >
+      <div v-if="stats.lowStockList && stats.lowStockList.length > 0">
+        <BTableSimple hover bordered>
+          <thead class="table-light">
+            <tr>
+              <th>Tên sản phẩm</th>
+              <th class="text-center">Tồn kho</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in stats.lowStockList" :key="index">
+              <td>{{ item.ten_san_pham }}</td>
+              <td class="text-center fw-bold text-danger">
+                {{ item.so_luong }}
+              </td>
+            </tr>
+          </tbody>
+        </BTableSimple>
+      </div>
+      <div v-else class="text-center text-success py-3">
+        <i class="bi bi-check-circle fs-1"></i>
+        <p class="mt-2">
+          Kho hàng đang ổn định, không có sản phẩm nào sắp hết.
+        </p>
+      </div>
     </BModal>
-
   </div>
 </template>
 
 <style scoped>
 .icon-box {
-  width: 45px; height: 45px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 10px; font-size: 1.5rem;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 1.5rem;
 }
-.bg-success-subtle { background-color: #d1e7dd; }
-.bg-warning-subtle { background-color: #fff3cd; }
-.bg-primary-subtle { background-color: #cfe2ff; }
-.bg-danger-subtle { background-color: #f8d7da; }
-
+.bg-success-subtle {
+  background-color: #d1e7dd;
+}
+.bg-warning-subtle {
+  background-color: #fff3cd;
+}
+.bg-primary-subtle {
+  background-color: #cfe2ff;
+}
+.bg-danger-subtle {
+  background-color: #f8d7da;
+}
 
 .low-stock-card:hover {
-    background-color: #fff5f5;
-    transition: background-color 0.3s;
+  background-color: #fff5f5;
+  transition: background-color 0.3s;
 }
 </style>

@@ -14,9 +14,9 @@ const currentId = ref(null);
 const form = ref({
   ho_ten: "",
   email: "",
-  password: "", 
+  password: "",
   so_dien_thoai: "",
-  role: "User" 
+  role: "User",
 });
 
 const fetchUsers = async () => {
@@ -32,7 +32,13 @@ const fetchUsers = async () => {
 };
 
 const resetForm = () => {
-  form.value = { ho_ten: "", email: "", password: "", so_dien_thoai: "", role: "User" };
+  form.value = {
+    ho_ten: "",
+    email: "",
+    password: "",
+    so_dien_thoai: "",
+    role: "User",
+  };
   isEditing.value = false;
   currentId.value = null;
 };
@@ -43,13 +49,13 @@ const openAddModal = () => {
 };
 
 const openEditModal = (u) => {
-  form.value = { 
-    ho_ten: u.ho_ten, 
-    email: u.email, 
+  form.value = {
+    ho_ten: u.ho_ten,
+    email: u.email,
     so_dien_thoai: u.so_dien_thoai,
-    role: u.roles?.includes('Admin') ? 'Admin' : 'User'
+    role: u.ten_vai_tro || "User"
   };
-  currentId.value = u.ma_nguoi_dung; 
+  currentId.value = u.ma_nguoi_dung;
   isEditing.value = true;
   showModal.value = true;
 };
@@ -59,7 +65,7 @@ const handleSubmit = async () => {
     if (isEditing.value) {
       const updateData = { ...form.value };
       delete updateData.password; // Không gửi password khi sửa thông tin chung
-      
+
       await userApi.update(currentId.value, updateData);
       alert("Cập nhật thành công!");
     } else {
@@ -77,7 +83,7 @@ const handleDelete = async (id) => {
   if (!confirm("Bạn muốn xóa người này? Hành động không thể hoàn tác!")) return;
   try {
     await userApi.delete(id);
-    fetchUsers(); 
+    fetchUsers();
   } catch (err) {
     alert("Xóa thất bại!");
   }
@@ -89,10 +95,10 @@ onMounted(fetchUsers);
 <template>
   <BContainer class="my-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Quản lý Khách hàng</h2>
-        <BButton variant="success" @click="openAddModal">+ Thêm User</BButton>
+      <h2>Quản lý Khách hàng</h2>
+      <BButton variant="success" @click="openAddModal">+ Thêm User</BButton>
     </div>
-    
+
     <BAlert :model-value="!!error" variant="danger">{{ error }}</BAlert>
 
     <BCard class="shadow-sm">
@@ -108,17 +114,27 @@ onMounted(fetchUsers);
         </thead>
         <tbody>
           <tr v-for="u in listUsers" :key="u.ma_nguoi_dung || u._id">
-            <td><strong>{{ u.ho_ten }}</strong></td>
-            <td>{{ u.email }}</td>
-            <td>{{ u.so_dien_thoai || '---' }}</td>
             <td>
-                <BBadge variant="primary" v-if="u.roles?.includes('Admin')">Admin</BBadge>
-                <BBadge variant="secondary" v-else>User</BBadge>
+              <strong>{{ u.ho_ten }}</strong>
+            </td>
+            <td>{{ u.email }}</td>
+            <td>{{ u.so_dien_thoai || "---" }}</td>
+            <td>
+              <BBadge variant="primary" v-if="u.roles?.includes('Admin')"
+                >Admin</BBadge
+              >
+              <BBadge variant="secondary" v-else>User</BBadge>
             </td>
             <td>
               <BButtonGroup size="sm">
-                <BButton variant="warning" @click="openEditModal(u)">Sửa</BButton>
-                <BButton variant="danger" @click="handleDelete(u.ma_nguoi_dung || u._id)">Xóa</BButton>
+                <BButton variant="warning" @click="openEditModal(u)"
+                  >Sửa</BButton
+                >
+                <BButton
+                  variant="danger"
+                  @click="handleDelete(u.ma_nguoi_dung || u._id)"
+                  >Xóa</BButton
+                >
               </BButtonGroup>
             </td>
           </tr>
@@ -126,41 +142,56 @@ onMounted(fetchUsers);
       </BTableSimple>
     </BCard>
 
-    <BModal 
-      v-model="showModal" 
+    <BModal
+      v-model="showModal"
       :title="isEditing ? 'Sửa thông tin User' : 'Thêm User mới'"
       @ok="handleSubmit"
-      ok-title="Lưu" cancel-title="Hủy"
+      ok-title="Lưu"
+      cancel-title="Hủy"
     >
-        <BForm @submit.stop.prevent="handleSubmit">
-            <BFormGroup label="Họ tên" class="mb-2">
-                <BFormInput v-model="form.ho_ten" required />
-            </BFormGroup>
-            
-            <BFormGroup label="Email" class="mb-2">
-                <BFormInput v-model="form.email" type="email" required :disabled="isEditing" />
-            </BFormGroup>
+      <BForm @submit.stop.prevent="handleSubmit">
+        <BFormGroup label="Họ tên" class="mb-2">
+          <BFormInput v-model="form.ho_ten" required />
+        </BFormGroup>
 
-            <BFormGroup label="Mật khẩu" class="mb-2" v-if="!isEditing">
-                <BFormInput v-model="form.password" type="password" required />
-            </BFormGroup>
+        <BFormGroup label="Email" class="mb-2">
+          <BFormInput
+            v-model="form.email"
+            type="email"
+            required
+            :disabled="isEditing"
+          />
+        </BFormGroup>
 
-            <BFormGroup label="Số điện thoại" class="mb-2">
-                <BFormInput v-model="form.so_dien_thoai" />
-            </BFormGroup>
+        <BFormGroup
+          :label="
+            isEditing ? 'Mật khẩu mới (Để trống nếu không đổi)' : 'Mật khẩu'
+          "
+          class="mb-2"
+        >
+          <BFormInput
+            v-model="form.password"
+            type="password"
+            :required="!isEditing"
+            placeholder="******"
+          />
+        </BFormGroup>
 
-            <BFormGroup label="Vai trò" class="mb-2">
-                <BFormSelect v-model="form.role">
-                    <option value="User">User (Khách hàng)</option>
-                    <option value="Admin">Admin (Quản trị)</option>
-                </BFormSelect>
-            </BFormGroup>
-        </BForm>
-        <template #footer="{ cancel }">
-             <BButton variant="secondary" @click="cancel()">Hủy</BButton>
-             <BButton variant="primary" @click="handleSubmit()">Lưu</BButton>
-        </template>
+        <BFormGroup label="Số điện thoại" class="mb-2">
+          <BFormInput v-model="form.so_dien_thoai" />
+        </BFormGroup>
+
+        <BFormGroup label="Vai trò" class="mb-2">
+          <BFormSelect v-model="form.role">
+            <option value="User">User (Khách hàng)</option>
+            <option value="Admin">Admin (Quản trị)</option>
+          </BFormSelect>
+        </BFormGroup>
+      </BForm>
+      <template #footer="{ cancel }">
+        <BButton variant="secondary" @click="cancel()">Hủy</BButton>
+        <BButton variant="primary" @click="handleSubmit()">Lưu</BButton>
+      </template>
     </BModal>
-
   </BContainer>
 </template>

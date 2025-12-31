@@ -2,7 +2,7 @@
 import { ref, onMounted } from "vue";
 import { getAllProducts } from "../api/products";
 import { getBanners } from "../api/content";
-import { getTopReviews } from '../api/review';
+import { getTopReviews } from "../api/review";
 
 const featuredProducts = ref([]);
 const banners = ref([]);
@@ -41,10 +41,10 @@ const fetchHomeData = async () => {
     console.error("Lỗi tải sản phẩm nổi bật:", err);
   }
   try {
-      const res = await getTopReviews();
-      topReviews.value = res.data;
+    const res = await getTopReviews();
+    topReviews.value = res.data;
   } catch (err) {
-      console.error(err);
+    console.error(err);
   }
 };
 

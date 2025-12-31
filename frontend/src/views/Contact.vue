@@ -14,7 +14,7 @@ const handleSubmit = async () => {
   try {
     await submitContact(form.value);
     alert("Cảm ơn bạn! Chúng tôi đã nhận được tin nhắn.");
-    form.value = { name: "", email: "", message: "" }; 
+    form.value = { name: "", email: "", message: "" };
   } catch (err) {
     alert("Lỗi: " + (err.response?.data || err.message));
   } finally {

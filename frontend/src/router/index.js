@@ -76,8 +76,16 @@ const router = createRouter({
       component: Contact,
     },
 
-    { path: "/forgot-password", component: ForgotPassword },
-    { path: "/reset-password", component: ResetPassword },
+    {
+      path: "/forgot-password",
+      name: "ForgotPassword",
+      component: ForgotPassword,
+    },
+    {
+      path: "/reset-password",
+      name: "ResetPassword",
+      component: ResetPassword,
+    },
 
     //admin routes
     {

@@ -19,7 +19,7 @@ const handleLogin = async () => {
     });
 
     localStorage.setItem("accessToken", res.data.accessToken);
-    const { accessToken, ...userInfo } = res.data;
+    const userInfo = res.data.user; 
     localStorage.setItem("user", JSON.stringify(userInfo));
 
     if (userInfo.roles && userInfo.roles.includes("Admin")) {
@@ -61,7 +61,11 @@ const handleLogin = async () => {
             placeholder="Nhập mật khẩu..."
           />
         </BFormGroup>
-
+        <div class="d-flex justify-content-end mb-4">
+            <router-link to="/forgot-password" class="text-decoration-none text-primary small">
+                Quên mật khẩu?
+            </router-link>
+        </div>
         <BAlert
           :model-value="!!message"
           variant="danger"

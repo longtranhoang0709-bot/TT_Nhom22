@@ -28,3 +28,7 @@ export const getOrderStats = () => {
 export const cancelOrder = (id) => {
   return api.put(`/orders/${id}/cancel`);
 };
+// 7. Hủy đơn hàng (Admin)
+export const adminCancelOrder = (id) => {
+  return api.put(`/orders/${id}/admin-cancel`);
+};
